@@ -221,30 +221,34 @@
             <div class="form-section">
               <h4>🌐 直连网段配置</h4>
               <div class="form-group">
-                <label class="form-label">直连网段 (JSON格式)</label>
+                <label class="form-label">直连网段 (YAML格式)</label>
                 <textarea 
-                  v-model="connectedNetworksJson"
+                  v-model="connectedNetworksYaml"
                   class="form-input" 
-                  rows="4"
-                  placeholder='[{"network": "192.168.1.0/24", "zone": "trust", "interface": "GE0/0/1"}]'
+                  rows="6"
+                  placeholder="- network: 192.168.1.0/24
+  zone: trust
+  interface: GE0/0/1"
                   style="font-family: monospace;"
                 ></textarea>
-                <small>格式：[{"network": "网段", "zone": "Zone", "interface": "接口"}]</small>
+                <small>格式：YAML 列表，每项包含 network、zone、interface</small>
               </div>
             </div>
 
             <div class="form-section">
               <h4>🛤️ 路由表配置</h4>
               <div class="form-group">
-                <label class="form-label">路由表 (JSON格式)</label>
+                <label class="form-label">路由表 (YAML格式)</label>
                 <textarea 
-                  v-model="routingTableJson"
+                  v-model="routingTableYaml"
                   class="form-input" 
-                  rows="4"
-                  placeholder='[{"destination": "172.25.0.0/16", "next_hop": "other_fw", "zone": "untrust"}]'
+                  rows="6"
+                  placeholder="- destination: 172.25.0.0/16
+  next_hop: other_fw
+  zone: untrust"
                   style="font-family: monospace;"
                 ></textarea>
-                <small>格式：[{"destination": "目的网段", "next_hop": "下一跳防火墙", "zone": "区域名称"}]</small>
+                <small>格式：YAML 列表，每项包含 destination、next_hop、zone</small>
               </div>
             </div>
 
@@ -266,6 +270,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { deviceAPI } from '../services/api'
+import yaml from 'js-yaml'
 
 const devices = ref([])
 const loading = ref(false)
@@ -287,8 +292,8 @@ const editForm = ref({
   connected_networks: [],
   routing_table: []
 })
-const connectedNetworksJson = ref('')
-const routingTableJson = ref('')
+const connectedNetworksYaml = ref('')
+const routingTableYaml = ref('')
 const editSubmitting = ref(false)
 
 const loadDevices = async () => {
@@ -370,8 +375,8 @@ const editDevice = (device) => {
     connected_networks: device.connected_networks || [],
     routing_table: device.routing_table || []
   }
-  connectedNetworksJson.value = JSON.stringify(device.connected_networks || [], null, 2)
-  routingTableJson.value = JSON.stringify(device.routing_table || [], null, 2)
+  connectedNetworksYaml.value = yaml.dump(device.connected_networks || [])
+  routingTableYaml.value = yaml.dump(device.routing_table || [])
   showEditModal.value = true
 }
 
@@ -388,8 +393,8 @@ const showDeviceDetail = (device) => {
     connected_networks: device.connected_networks || [],
     routing_table: device.routing_table || []
   }
-  connectedNetworksJson.value = JSON.stringify(device.connected_networks || [], null, 2)
-  routingTableJson.value = JSON.stringify(device.routing_table || [], null, 2)
+  connectedNetworksYaml.value = yaml.dump(device.connected_networks || [])
+  routingTableYaml.value = yaml.dump(device.routing_table || [])
   showEditModal.value = true
 }
 
@@ -397,17 +402,17 @@ const submitEdit = async () => {
   editSubmitting.value = true
   try {
     try {
-      editForm.value.connected_networks = JSON.parse(connectedNetworksJson.value || '[]')
+      editForm.value.connected_networks = yaml.load(connectedNetworksYaml.value || '[]')
     } catch (e) {
-      alert('❌ 直连网段 JSON 格式错误')
+      alert('❌ 直连网段 YAML 格式错误')
       editSubmitting.value = false
       return
     }
     
     try {
-      editForm.value.routing_table = JSON.parse(routingTableJson.value || '[]')
+      editForm.value.routing_table = yaml.load(routingTableYaml.value || '[]')
     } catch (e) {
-      alert('❌ 路由表 JSON 格式错误')
+      alert('❌ 路由表 YAML 格式错误')
       editSubmitting.value = false
       return
     }

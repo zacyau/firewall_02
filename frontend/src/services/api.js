@@ -1,0 +1,49 @@
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: '/api/v1',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 设备管理 API
+export const deviceAPI = {
+  // 获取所有设备
+  getAll: () => api.get('/devices'),
+  
+  // 获取单个设备
+  get: (name) => api.get(`/devices/${name}`),
+  
+  // 注册设备
+  register: (deviceData) => api.post('/devices/register', deviceData),
+  
+  // 删除设备
+  delete: (name) => api.delete(`/devices/${name}`),
+  
+  // 检查心跳
+  checkHeartbeat: (name) => api.get(`/devices/${name}/heartbeat`)
+}
+
+// 策略管理 API
+export const policyAPI = {
+  // 生成策略
+  generate: (policyData) => api.post('/policies/generate', policyData),
+  
+  // 应用策略
+  apply: (applyData) => api.post('/policies/apply', applyData),
+  
+  // 获取所有策略
+  getAll: () => api.get('/policies'),
+  
+  // 获取单个策略
+  get: (id) => api.get(`/policies/${id}`)
+}
+
+// 健康检查
+export const healthAPI = {
+  check: () => axios.get('/health')
+}
+
+export default api

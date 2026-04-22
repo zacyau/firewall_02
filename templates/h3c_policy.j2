@@ -1,0 +1,22 @@
+# 新华三防火墙安全策略配置
+# 策略名称: {{ policy_name }}
+# 源区域: {{ source_zone }} -> 目的区域: {{ dest_zone }}
+# 源IP: {{ source_ip }}
+# 目的IP: {{ dest_ip }}
+# 协议: {{ protocol | upper() }}
+# 目的端口: {{ dest_port }}
+# 生成时间: {{ generation_time }}
+
+system-view
+security-policy
+ rule name {{ policy_name }}
+  source-zone name {{ source_zone }}
+  destination-zone name {{ dest_zone }}
+  source-ip address {{ source_ip }}
+  destination-ip address {{ dest_ip }}
+  service protocol {{ protocol }} destination-port {{ dest_port }}
+  description "Auto-generated policy for {{ policy_name }}"
+  action permit
+ quit
+quit
+commit

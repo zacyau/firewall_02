@@ -1,0 +1,13 @@
+# 山石防火墙安全策略配置
+# 生成时间: {{ generation_time }}
+
+configure
+rule
+ name "{{ policy_name }}"
+ src-zone "{{ source_zone }}"
+ dst-zone "{{ dest_zone }}"
+ src-addr "{{ source_ip }}"
+ dst-addr "{{ dest_ip }}"
+ service "{{ dest_port }}"
+ action permit
+ exit

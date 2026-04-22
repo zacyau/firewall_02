@@ -1,0 +1,16 @@
+# 华为防火墙安全策略配置
+# 生成时间: {{ generation_time }}
+
+system-view
+security-policy
+ rule name {{ policy_name }}
+  source-zone {{ source_zone }}
+  destination-zone {{ dest_zone }}
+  source-address {{ source_ip }}
+  destination-address {{ dest_ip }}
+  service {{ protocol | upper() }} destination-port {{ dest_port }}
+  description "Auto-generated policy for {{ policy_name }}"
+  action permit
+ quit
+quit
+commit

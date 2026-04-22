@@ -1,0 +1,18 @@
+# 瞻博防火墙安全策略配置
+# 策略名称: {{ policy_name }}
+# 源区域: {{ source_zone }} -> 目的区域: {{ dest_zone }}
+# 源IP: {{ source_ip }}
+# 目的IP: {{ dest_ip }}
+# 协议: {{ protocol | upper() }}
+# 目的端口: {{ dest_port }}
+# 生成时间: {{ generation_time }}
+
+configure
+set security zones security-zone {{ source_zone }} address-book address {{ source_ip | replace('.', '_') }}_addr {{ source_ip }}/32
+set security zones security-zone {{ dest_zone }} address-book address {{ dest_ip | replace('.', '_') }}_addr {{ dest_ip }}/32
+set security policies from-zone {{ source_zone }} to-zone {{ dest_zone }} policy {{ policy_name }} match source-address {{ source_ip | replace('.', '_') }}_addr
+set security policies from-zone {{ source_zone }} to-zone {{ dest_zone }} policy {{ policy_name }} match destination-address {{ dest_ip | replace('.', '_') }}_addr
+set security policies from-zone {{ source_zone }} to-zone {{ dest_zone }} policy {{ policy_name }} match application junos-{{ protocol }}
+set security policies from-zone {{ source_zone }} to-zone {{ dest_zone }} policy {{ policy_name }} description "Auto-generated policy for {{ policy_name }}"
+set security policies from-zone {{ source_zone }} to-zone {{ dest_zone }} policy {{ policy_name }} then permit
+commit

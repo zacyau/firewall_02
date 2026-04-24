@@ -20,8 +20,9 @@ class PolicyRequest(BaseModel):
     policy_name: str
     source_ip: str
     dest_ip: str
-    protocol: str
+    protocol: str = 'tcp'
     dest_port: str
+    description: Optional[str] = None
 
 
 class PolicyApplyRequest(BaseModel):
@@ -29,3 +30,29 @@ class PolicyApplyRequest(BaseModel):
     device_name: str
     policy_script: str
     policy_id: Optional[int] = None
+
+
+class AddressGroupRequest(BaseModel):
+    """地址组请求"""
+    name: str
+    description: Optional[str] = None
+    addresses: list = []
+
+
+class PortGroupRequest(BaseModel):
+    """端口组请求"""
+    name: str
+    description: Optional[str] = None
+    ports: list = []
+    protocol: Optional[str] = 'tcp'
+
+
+class PolicyRequestWithGroups(BaseModel):
+    """基于组的策略请求"""
+    policy_name: str
+    source_ip: Optional[str] = None
+    dest_ip: Optional[str] = None
+    source_group: Optional[str] = None
+    dest_group: Optional[str] = None
+    port_group: Optional[str] = None
+    protocol: str = 'tcp'

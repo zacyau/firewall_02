@@ -6,10 +6,8 @@ security-policy
  rule name {{ policy_name }}
   source-zone {{ source_zone }}
   destination-zone {{ dest_zone }}
-  source-address {{ source_ip }}
   destination-address {{ dest_ip }}
-  service {{ protocol | upper() }} destination-port {{ dest_port }}
-  description "Auto-generated policy for {{ policy_name }}"
+  service {{ dest_port }}
   action permit
  quit
 quit

@@ -125,3 +125,49 @@ class PolicyAuditLog(Base):
             "details": self.details,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
+
+
+class AddressGroup(Base):
+    """地址组表 - 用于存储IP地址组"""
+    __tablename__ = 'address_groups'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(String(500))
+    addresses = Column(JSON)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "addresses": self.addresses or [],
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class PortGroup(Base):
+    """端口组表 - 用于存储端口组"""
+    __tablename__ = 'port_groups'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(String(500))
+    ports = Column(JSON)
+    protocol = Column(String(20), default='tcp')
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "ports": self.ports or [],
+            "protocol": self.protocol,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }

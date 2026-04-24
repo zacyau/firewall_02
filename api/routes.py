@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List
-from api.models import DeviceRegisterRequest, PolicyRequest, PolicyApplyRequest
-from services import DeviceManager, PolicyManager
+from api.models import DeviceRegisterRequest, PolicyRequest, PolicyApplyRequest, AddressGroupRequest, PortGroupRequest, PolicyRequestWithGroups
+from services import DeviceManager, PolicyManager, GroupManager
 from database import Database
 
 router = APIRouter()
@@ -9,6 +9,7 @@ router = APIRouter()
 db = Database()
 device_manager = DeviceManager(db)
 policy_manager = PolicyManager(db)
+group_manager = GroupManager(db)
 
 
 @router.post("/devices/register", summary="注册防火墙设备")
@@ -65,19 +66,30 @@ async def delete_device(device_name: str):
 
 
 @router.post("/policies/generate", summary="生成防火墙策略")
-async def generate_policy(request: PolicyRequest):
+async def generate_policy(request: PolicyRequestWithGroups):
     """基于路径计算生成防火墙策略脚本
 
-    输入：策略名、源IP、目的IP、协议、目标端口
+    输入：策略名、源地址组、目的地址组、端口组
     输出：需要配置的防火墙列表及每个防火墙的策略脚本
     """
-    policy_config = request.dict()
-    result = policy_manager.generate_policy(policy_config)
+    import traceback
+    try:
+        policy_config = request.dict(exclude_none=True)
+        result = policy_manager.generate_policy(policy_config)
 
-    return {
-        "status": "success",
-        "data": result
-    }
+        return {
+            "status": "success",
+            "data": result
+        }
+    except Exception as e:
+        error_detail = str(e)
+        error_trace = traceback.format_exc()
+        print(f"ERROR in generate_policy: {error_detail}")
+        print(error_trace)
+        return {
+            "status": "error",
+            "detail": error_detail
+        }
 
 
 @router.post("/policies/apply", summary="应用策略到防火墙")
@@ -114,3 +126,129 @@ async def get_policy(policy_id: int):
         }
     else:
         raise HTTPException(status_code=404, detail=f"策略 {policy_id} 不存在")
+
+
+@router.post("/groups/address", summary="创建地址组")
+async def create_address_group(request: AddressGroupRequest):
+    """创建新的地址组"""
+    result = group_manager.create_address_group(
+        name=request.name,
+        addresses=request.addresses,
+        description=request.description
+    )
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.get("/groups/address", summary="获取所有地址组")
+async def get_all_address_groups():
+    """获取所有地址组"""
+    groups = group_manager.get_all_address_groups()
+    return {
+        "status": "success",
+        "count": len(groups),
+        "groups": groups
+    }
+
+
+@router.get("/groups/address/{group_name}", summary="获取地址组")
+async def get_address_group(group_name: str):
+    """获取指定地址组"""
+    group = group_manager.get_address_group(group_name)
+    if group:
+        return {
+            "status": "success",
+            "group": group
+        }
+    else:
+        raise HTTPException(status_code=404, detail=f"地址组 {group_name} 不存在")
+
+
+@router.put("/groups/address/{group_name}", summary="更新地址组")
+async def update_address_group(group_name: str, request: AddressGroupRequest):
+    """更新地址组"""
+    result = group_manager.update_address_group(
+        name=group_name,
+        addresses=request.addresses,
+        description=request.description
+    )
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=404, detail=result.get("message"))
+
+
+@router.delete("/groups/address/{group_name}", summary="删除地址组")
+async def delete_address_group(group_name: str):
+    """删除地址组"""
+    result = group_manager.delete_address_group(group_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=404, detail=result.get("message"))
+
+
+@router.post("/groups/port", summary="创建端口组")
+async def create_port_group(request: PortGroupRequest):
+    """创建新的端口组"""
+    result = group_manager.create_port_group(
+        name=request.name,
+        ports=request.ports,
+        protocol=request.protocol,
+        description=request.description
+    )
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.get("/groups/port", summary="获取所有端口组")
+async def get_all_port_groups():
+    """获取所有端口组"""
+    groups = group_manager.get_all_port_groups()
+    return {
+        "status": "success",
+        "count": len(groups),
+        "groups": groups
+    }
+
+
+@router.get("/groups/port/{group_name}", summary="获取端口组")
+async def get_port_group(group_name: str):
+    """获取指定端口组"""
+    group = group_manager.get_port_group(group_name)
+    if group:
+        return {
+            "status": "success",
+            "group": group
+        }
+    else:
+        raise HTTPException(status_code=404, detail=f"端口组 {group_name} 不存在")
+
+
+@router.put("/groups/port/{group_name}", summary="更新端口组")
+async def update_port_group(group_name: str, request: PortGroupRequest):
+    """更新端口组"""
+    result = group_manager.update_port_group(
+        name=group_name,
+        ports=request.ports,
+        protocol=request.protocol,
+        description=request.description
+    )
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=404, detail=result.get("message"))
+
+
+@router.delete("/groups/port/{group_name}", summary="删除端口组")
+async def delete_port_group(group_name: str):
+    """删除端口组"""
+    result = group_manager.delete_port_group(group_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=404, detail=result.get("message"))

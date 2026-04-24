@@ -4,6 +4,10 @@ import DeviceRegister from '../views/DeviceRegister.vue'
 import PolicyGenerator from '../views/PolicyGenerator.vue'
 import PolicyList from '../views/PolicyList.vue'
 import Dashboard from '../views/Dashboard.vue'
+import AddressGroupList from '../views/AddressGroupList.vue'
+import AddressGroupCreate from '../views/AddressGroupCreate.vue'
+import PortGroupList from '../views/PortGroupList.vue'
+import PortGroupCreate from '../views/PortGroupCreate.vue'
 
 const routes = [
   {
@@ -30,6 +34,26 @@ const routes = [
     path: '/policies',
     name: 'PolicyList',
     component: PolicyList
+  },
+  {
+    path: '/groups/address',
+    name: 'AddressGroupList',
+    component: AddressGroupList
+  },
+  {
+    path: '/groups/address/create',
+    name: 'AddressGroupCreate',
+    component: AddressGroupCreate
+  },
+  {
+    path: '/groups/port',
+    name: 'PortGroupList',
+    component: PortGroupList
+  },
+  {
+    path: '/groups/port/create',
+    name: 'PortGroupCreate',
+    component: PortGroupCreate
   }
 ]
 

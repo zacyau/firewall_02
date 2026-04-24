@@ -46,4 +46,22 @@ export const healthAPI = {
   check: () => axios.get('/health')
 }
 
+// 地址组管理 API
+export const addressGroupAPI = {
+  getAll: () => api.get('/groups/address'),
+  get: (name) => api.get(`/groups/address/${name}`),
+  create: (data) => api.post('/groups/address', data),
+  update: (name, data) => api.put(`/groups/address/${name}`, data),
+  delete: (name) => api.delete(`/groups/address/${name}`)
+}
+
+// 端口组管理 API
+export const portGroupAPI = {
+  getAll: () => api.get('/groups/port'),
+  get: (name) => api.get(`/groups/port/${name}`),
+  create: (data) => api.post('/groups/port', data),
+  update: (name, data) => api.put(`/groups/port/${name}`, data),
+  delete: (name) => api.delete(`/groups/port/${name}`)
+}
+
 export default api

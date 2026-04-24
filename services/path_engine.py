@@ -215,3 +215,129 @@ class PathCalculator:
                 f"{fw['device_name']} ({fw['source_zone']} → {fw['dest_zone']})"
             )
         return " | ".join(summary_parts)
+
+    def calculate_paths_for_ip_pairs(self, ip_pairs: List[Tuple[str, str]]) -> List[List[Dict[str, Any]]]:
+        """为一组IP对计算路径
+
+        Args:
+            ip_pairs: [(source_ip, dest_ip), ...]
+
+        Returns:
+            每对IP对应的防火墙路径列表
+        """
+        paths = []
+        for source_ip, dest_ip in ip_pairs:
+            try:
+                path = self.calculate_path(source_ip, dest_ip)
+                paths.append(path)
+            except Exception as e:
+                paths.append([])
+        return paths
+
+    def merge_paths_by_consistency(self, paths: List[List[Dict[str, Any]]], source_ips: List[str], dest_ips: List[str], source_dest_pairs: List[Tuple[str, str]] = None) -> List[Dict[str, Any]]:
+        """路径合并优化 - 按路径一致性分组
+
+        当地址组中所有IP组合计算出相同路径时，仅输出一套策略配置
+        当地址组中不同IP组合产生不同路径时，需按路径分类输出多套策略
+
+        Args:
+            paths: 各IP对应的防火墙路径列表
+            source_ips: 源IP列表
+            dest_ips: 目的IP列表
+            source_dest_pairs: 源目的IP对列表（如果提供，则使用此参数）
+
+        Returns:
+            合并后的策略组列表
+        """
+        path_groups = {}
+
+        if source_dest_pairs is None:
+            source_dest_pairs = [(src, dst) for src in source_ips for dst in dest_ips]
+
+        for idx, path in enumerate(paths):
+            if not path:
+                continue
+
+            if idx >= len(source_dest_pairs):
+                continue
+
+            src_ip, dst_ip = source_dest_pairs[idx]
+            path_key = self._get_path_key(path)
+
+            if path_key not in path_groups:
+                path_groups[path_key] = {
+                    "path": path,
+                    "source_ips": [],
+                    "dest_ips": [],
+                    "source_dest_pairs": []
+                }
+
+            path_groups[path_key]["source_ips"].append(src_ip)
+            path_groups[path_key]["dest_ips"].append(dst_ip)
+            path_groups[path_key]["source_dest_pairs"].append((src_ip, dst_ip))
+
+        merged_results = []
+        for path_key, group_data in path_groups.items():
+            path = group_data["path"]
+
+            policy_configs = []
+            for fw in path:
+                policy_configs.append({
+                    "device_name": fw["device_name"],
+                    "vendor": fw["vendor"],
+                    "ip": fw["ip"],
+                    "location": fw["location"],
+                    "source_zone": fw["source_zone"],
+                    "dest_zone": fw["dest_zone"],
+                    "source_ips": group_data["source_ips"],
+                    "dest_ips": group_data["dest_ips"],
+                    "policy_name": f"policy_{fw['device_name']}_{fw['sequence']}",
+                    "flow_direction": fw["flow_direction"],
+                    "sequence": fw["sequence"],
+                    "source_dest_pairs": group_data["source_dest_pairs"]
+                })
+
+            merged_results.append({
+                "path": path,
+                "firewall_count": len(path),
+                "source_ips": group_data["source_ips"],
+                "dest_ips": group_data["dest_ips"],
+                "source_dest_pairs": group_data["source_dest_pairs"],
+                "firewall_policies": policy_configs,
+                "path_description": " → ".join([fw["device_name"] for fw in path])
+            })
+
+        return merged_results
+
+    def _get_path_key(self, path: List[Dict[str, Any]]) -> str:
+        """生成路径唯一标识"""
+        return "|".join([
+            f"{fw['device_name']}:{fw['source_zone']}->{fw['dest_zone']}"
+            for fw in path
+        ])
+
+    def expand_ip_ranges(self, addresses: List[str]) -> List[str]:
+        """展开IP地址列表，支持单个IP和CIDR范围
+
+        Args:
+            addresses: IP地址列表，支持 "192.168.1.1" 或 "192.168.1.0/24"
+
+        Returns:
+            展开后的IP列表
+        """
+        expanded = []
+        for addr in addresses:
+            addr = addr.strip()
+            if not addr:
+                continue
+
+            if "/" in addr:
+                try:
+                    network = ipaddress.ip_network(addr, strict=False)
+                    expanded.extend([str(ip) for ip in network.hosts()])
+                except:
+                    expanded.append(addr)
+            else:
+                expanded.append(addr)
+
+        return expanded

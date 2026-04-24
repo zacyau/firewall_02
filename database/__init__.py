@@ -1,3 +1,3 @@
-from .models import Database, FirewallDevice, SecurityPolicy, PolicyAuditLog, Base
+from .models import Database, FirewallDevice, SecurityPolicy, PolicyAuditLog, Base, AddressGroup, PortGroup
 
-__all__ = ['Database', 'FirewallDevice', 'SecurityPolicy', 'PolicyAuditLog', 'Base']
+__all__ = ['Database', 'FirewallDevice', 'SecurityPolicy', 'PolicyAuditLog', 'Base', 'AddressGroup', 'PortGroup']

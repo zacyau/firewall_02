@@ -199,6 +199,124 @@ body {
   background: #fafafa;
 }
 
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 16px;
+}
+
+.data-table th {
+  background: #f5f5f5;
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 2px solid #e8e8e8;
+}
+
+.data-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.data-table tr:hover {
+  background: #fafafa;
+}
+
+.addresses-preview, .ports-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.addr-tag, .port-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #e6f4ff;
+  color: #1890ff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.port-tag {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.more-count {
+  display: inline-block;
+  padding: 4px 8px;
+  color: #999;
+  font-size: 12px;
+}
+
+.group-card {
+  background: white;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+}
+
+.group-card:hover {
+  border-color: #1890ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.group-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.group-card-desc {
+  font-size: 13px;
+  color: #666;
+}
+
+.group-card-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.group-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 16px;
+}
+
+.group-card-content {
+  margin-top: 8px;
+}
+
+.meta-label {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
 .badge {
   display: inline-block;
   padding: 4px 8px;

@@ -7,6 +7,8 @@
       <div class="navbar-menu">
         <router-link to="/" class="nav-link">首页</router-link>
         <router-link to="/devices" class="nav-link">设备管理</router-link>
+        <router-link to="/groups/address" class="nav-link">地址组</router-link>
+        <router-link to="/groups/port" class="nav-link">端口组</router-link>
         <router-link to="/policies/generate" class="nav-link">策略生成</router-link>
         <router-link to="/policies" class="nav-link">策略列表</router-link>
       </div>

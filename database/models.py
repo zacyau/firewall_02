@@ -149,6 +149,32 @@ class AddressGroup(Base):
         }
 
 
+class AddressGroupDeviceStatus(Base):
+    """地址组设备配置状态表 - 记录各防火墙是否已配置该地址组"""
+    __tablename__ = 'address_group_device_status'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    group_name = Column(String(100), nullable=False, index=True)
+    device_name = Column(String(100), nullable=False, index=True)
+    status = Column(String(20), default='pending')
+    config_script = Column(Text)
+    applied_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "group_name": self.group_name,
+            "device_name": self.device_name,
+            "status": self.status,
+            "config_script": self.config_script,
+            "applied_at": self.applied_at.isoformat() if self.applied_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
 class PortGroup(Base):
     """端口组表 - 用于存储端口组"""
     __tablename__ = 'port_groups'
@@ -168,6 +194,32 @@ class PortGroup(Base):
             "description": self.description,
             "ports": self.ports or [],
             "protocol": self.protocol,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class PortGroupDeviceStatus(Base):
+    """端口组设备配置状态表 - 记录各防火墙是否已配置该端口组"""
+    __tablename__ = 'port_group_device_status'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    group_name = Column(String(100), nullable=False, index=True)
+    device_name = Column(String(100), nullable=False, index=True)
+    status = Column(String(20), default='pending')
+    config_script = Column(Text)
+    applied_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "group_name": self.group_name,
+            "device_name": self.device_name,
+            "status": self.status,
+            "config_script": self.config_script,
+            "applied_at": self.applied_at.isoformat() if self.applied_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

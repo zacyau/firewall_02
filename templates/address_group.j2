@@ -1,0 +1,64 @@
+# 地址组配置
+# 组名称: {{ group_name }}
+# 设备: {{ device_name }}
+# 厂商: {{ vendor }}
+# 生成时间: {{ generation_time }}
+{%- if vendor == 'huawei' %}
+
+system-view
+{%- for addr in addresses %}
+{%- if '/' in addr %}
+
+ip address-set {{ group_name }} type object
+ address {{ addr }}
+{%- else %}
+
+ip address-set {{ group_name }} type object
+ address {{ addr }} mask 32
+{%- endif %}
+{%- endfor %}
+
+quit
+commit
+{%- elif vendor == 'hillstone' %}
+
+configure
+ address {{ group_name }}
+{%- for addr in addresses %}
+
+  ip {{ addr }}
+{%- endfor %}
+
+ exit
+{%- elif vendor == 'h3c' %}
+
+system-view
+security-zone
+{%- for addr in addresses %}
+
+ ip address {{ addr }}
+{%- endfor %}
+
+quit
+quit
+commit
+{%- elif vendor == 'juniper' %}
+
+configure
+{%- for addr in addresses %}
+
+set security address-book global address {{ group_name }}_{{ loop.index }} {{ addr }}
+{%- endfor %}
+
+set security address-book global address-set {{ group_name }} address {{ group_name }}_1
+commit
+{%- else %}
+
+# 不支持的厂商: {{ vendor }}
+# 地址组: {{ group_name }}
+# 地址列表:
+{%- for addr in addresses %}
+
+#   {{ addr }}
+{%- endfor %}
+{%- endif %}

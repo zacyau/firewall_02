@@ -52,7 +52,11 @@ export const addressGroupAPI = {
   get: (name) => api.get(`/groups/address/${name}`),
   create: (data) => api.post('/groups/address', data),
   update: (name, data) => api.put(`/groups/address/${name}`, data),
-  delete: (name) => api.delete(`/groups/address/${name}`)
+  delete: (name) => api.delete(`/groups/address/${name}`),
+  generateConfigs: (name) => api.post(`/groups/address/${name}/generate`),
+  applyConfig: (name, deviceName) => api.post(`/groups/address/${name}/apply/${deviceName}`),
+  applyAll: (name) => api.post(`/groups/address/${name}/apply-all`),
+  getStatus: (name) => api.get(`/groups/address/${name}/status`)
 }
 
 // 端口组管理 API
@@ -61,7 +65,11 @@ export const portGroupAPI = {
   get: (name) => api.get(`/groups/port/${name}`),
   create: (data) => api.post('/groups/port', data),
   update: (name, data) => api.put(`/groups/port/${name}`, data),
-  delete: (name) => api.delete(`/groups/port/${name}`)
+  delete: (name) => api.delete(`/groups/port/${name}`),
+  generateConfigs: (name) => api.post(`/groups/port/${name}/generate`),
+  applyConfig: (name, deviceName) => api.post(`/groups/port/${name}/apply/${deviceName}`),
+  applyAll: (name) => api.post(`/groups/port/${name}/apply-all`),
+  getStatus: (name) => api.get(`/groups/port/${name}/status`)
 }
 
 export default api

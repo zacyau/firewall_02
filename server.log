@@ -1,0 +1,19 @@
+/Users/bobyau/Desktop/Zac/codes/Trae/firewall_02/main.py:24: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Started server process [21263]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+数据库初始化完成
+已加载 3 个设备配置
+INFO:     127.0.0.1:51398 - "GET /api/v1/groups/address HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51412 - "POST /api/v1/groups/address/test_servers/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51429 - "GET /api/v1/groups/port HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51443 - "POST /api/v1/groups/port/web_ports/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61120 - "GET /api/v1/groups/address HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61137 - "POST /api/v1/groups/address/test_servers/generate HTTP/1.1" 200 OK

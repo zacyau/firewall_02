@@ -252,3 +252,85 @@ async def delete_port_group(group_name: str):
         return result
     else:
         raise HTTPException(status_code=404, detail=result.get("message"))
+
+
+@router.post("/groups/address/{group_name}/generate", summary="生成地址组配置")
+async def generate_address_group_configs(group_name: str):
+    """生成地址组在所有防火墙上的配置脚本"""
+    result = group_manager.generate_address_group_configs(group_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.post("/groups/address/{group_name}/apply/{device_name}", summary="应用地址组配置到防火墙")
+async def apply_address_group_config(group_name: str, device_name: str):
+    """应用地址组配置到指定防火墙"""
+    result = group_manager.apply_address_group_config(group_name, device_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.post("/groups/address/{group_name}/apply-all", summary="批量应用地址组配置")
+async def apply_address_group_to_all(group_name: str):
+    """批量应用地址组配置到所有未配置的防火墙"""
+    result = group_manager.apply_address_group_to_all(group_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.get("/groups/address/{group_name}/status", summary="获取地址组配置状态")
+async def get_address_group_status(group_name: str):
+    """获取地址组在各防火墙上的配置状态"""
+    statuses = group_manager.get_address_group_device_status(group_name)
+    return {
+        "status": "success",
+        "group_name": group_name,
+        "statuses": statuses
+    }
+
+
+@router.post("/groups/port/{group_name}/generate", summary="生成端口组配置")
+async def generate_port_group_configs(group_name: str):
+    """生成端口组在所有防火墙上的配置脚本"""
+    result = group_manager.generate_port_group_configs(group_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.post("/groups/port/{group_name}/apply/{device_name}", summary="应用端口组配置到防火墙")
+async def apply_port_group_config(group_name: str, device_name: str):
+    """应用端口组配置到指定防火墙"""
+    result = group_manager.apply_port_group_config(group_name, device_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.post("/groups/port/{group_name}/apply-all", summary="批量应用端口组配置")
+async def apply_port_group_to_all(group_name: str):
+    """批量应用端口组配置到所有未配置的防火墙"""
+    result = group_manager.apply_port_group_to_all(group_name)
+    if result.get("status") == "success":
+        return result
+    else:
+        raise HTTPException(status_code=400, detail=result.get("message"))
+
+
+@router.get("/groups/port/{group_name}/status", summary="获取端口组配置状态")
+async def get_port_group_status(group_name: str):
+    """获取端口组在各防火墙上的配置状态"""
+    statuses = group_manager.get_port_group_device_status(group_name)
+    return {
+        "status": "success",
+        "group_name": group_name,
+        "statuses": statuses
+    }

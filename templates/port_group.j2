@@ -1,0 +1,81 @@
+# 端口组配置
+# 组名称: {{ group_name }}
+# 协议: {{ protocol | upper() }}
+# 设备: {{ device_name }}
+# 厂商: {{ vendor }}
+# 生成时间: {{ generation_time }}
+{%- if vendor == 'huawei' %}
+
+system-view
+{%- for port in ports %}
+{%- if '-' in port %}
+
+port-group {{ group_name }}
+ port-range {{ port }} protocol {{ protocol }}
+{%- else %}
+
+port-group {{ group_name }}
+ port {{ port }} protocol {{ protocol }}
+{%- endif %}
+{%- endfor %}
+
+quit
+commit
+{%- elif vendor == 'hillstone' %}
+
+configure
+ service {{ group_name }}
+{%- for port in ports %}
+{%- if '-' in port %}
+
+  {{ protocol }} port {{ port.split('-')[0] }} {{ port.split('-')[1] }}
+{%- else %}
+
+  {{ protocol }} port {{ port }}
+{%- endif %}
+{%- endfor %}
+
+ exit
+{%- elif vendor == 'h3c' %}
+
+system-view
+object-group service {{ group_name }}
+{%- for port in ports %}
+{%- if '-' in port %}
+
+ port-range {{ port }} protocol {{ protocol }}
+{%- else %}
+
+ port {{ port }} protocol {{ protocol }}
+{%- endif %}
+{%- endfor %}
+
+quit
+quit
+commit
+{%- elif vendor == 'juniper' %}
+
+configure
+{%- for port in ports %}
+{%- if '-' in port %}
+
+set applications application {{ group_name }}_{{ loop.index }} protocol {{ protocol }} destination-port {{ port.split('-')[0] }}-{{ port.split('-')[1] }}
+{%- else %}
+
+set applications application {{ group_name }}_{{ loop.index }} protocol {{ protocol }} destination-port {{ port }}
+{%- endif %}
+{%- endfor %}
+
+set applications application-set {{ group_name }} application {{ group_name }}_1
+commit
+{%- else %}
+
+# 不支持的厂商: {{ vendor }}
+# 端口组: {{ group_name }}
+# 协议: {{ protocol }}
+# 端口列表:
+{%- for port in ports %}
+
+#   {{ port }}
+{%- endfor %}
+{%- endif %}

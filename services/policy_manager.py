@@ -124,17 +124,67 @@ class PolicyManager:
         finally:
             session.close()
 
-    def apply_policy(self, policy_config: Dict[str, Any]) -> Dict[str, Any]:
-        """应用策略到防火墙"""
+    def apply_policy(self, policy_config: Dict[str, Any], simulate: bool = False) -> Dict[str, Any]:
+        """应用策略到防火墙
+        
+        Args:
+            policy_config: 策略配置
+            simulate: 是否为模拟模式（无真实设备时直接保存为已应用）
+        """
         device_name = policy_config["device_name"]
         policy_script = policy_config["policy_script"]
+        policy_name = policy_config.get("policy_name", "unknown")
 
         session = self.db.get_session()
         try:
+            # 1. 先保存策略到数据库，状态为 applying（下发中）
+            policy = SecurityPolicy(
+                policy_name=policy_name,
+                source_ip=policy_config.get("source_ip", "any"),
+                dest_ip=policy_config.get("dest_ip", "any"),
+                protocol=policy_config.get("protocol", "tcp"),
+                dest_port=policy_config.get("dest_port", "any"),
+                action=policy_config.get("action", "permit"),
+                source_zone=policy_config.get("source_zone"),
+                dest_zone=policy_config.get("dest_zone"),
+                device_name=device_name,
+                policy_script=policy_script,
+                status="applying"
+            )
+            session.add(policy)
+            session.commit()
+
+            # 2. 模拟模式：直接标记为已应用，不连接真实设备
+            if simulate:
+                policy.status = "applied"
+                session.commit()
+                
+                log = PolicyAuditLog(
+                    policy_id=policy.id,
+                    action="apply_policy_simulate",
+                    operator="system",
+                    result="success",
+                    details=f"模拟模式：策略已保存到数据库（设备 {device_name}）"
+                )
+                session.add(log)
+                session.commit()
+                
+                return {
+                    "status": "success",
+                    "policy_id": policy.id,
+                    "device_name": device_name,
+                    "message": "策略已保存到数据库（模拟模式，未连接真实设备）"
+                }
+
+            # 3. 真实模式：连接防火墙设备并下发配置
             device = self._get_device_by_name(device_name)
             if not device:
+                policy.status = "failed"
+                policy.error_message = f"设备 {device_name} 不存在"
+                session.commit()
                 return {
                     "status": "failed",
+                    "policy_id": policy.id,
                     "message": f"设备 {device_name} 不存在"
                 }
 
@@ -152,8 +202,18 @@ class PolicyManager:
             adapter = self.factory.create_firewall(device_config)
             result = adapter.apply_policy(policy_script)
 
+            # 4. 根据应用结果更新策略状态
+            if result.get("status") == "success":
+                policy.status = "applied"
+                policy.error_message = None
+            else:
+                policy.status = "failed"
+                policy.error_message = result.get("message", "应用失败")
+            session.commit()
+
+            # 5. 记录审计日志
             log = PolicyAuditLog(
-                policy_id=policy_config.get("policy_id"),
+                policy_id=policy.id,
                 action="apply_policy",
                 operator="system",
                 result=result.get("status"),
@@ -162,16 +222,21 @@ class PolicyManager:
             session.add(log)
             session.commit()
 
-            if result.get("status") == "success":
-                policy = session.query(SecurityPolicy).filter(
-                    SecurityPolicy.policy_name == policy_config["policy_name"]
-                ).first()
-                if policy:
-                    policy.status = "applied"
-                    session.commit()
-
-            return result
+            return {
+                "status": result.get("status"),
+                "policy_id": policy.id,
+                "device_name": device_name,
+                "message": result.get("message")
+            }
+            
         except Exception as e:
+            session.rollback()
+            # 如果策略已创建，标记为失败
+            if 'policy' in locals() and policy.id:
+                policy.status = "failed"
+                policy.error_message = str(e)
+                session.commit()
+            
             return {
                 "status": "failed",
                 "message": str(e)

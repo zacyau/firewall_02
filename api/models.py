@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -29,6 +29,14 @@ class PolicyApplyRequest(BaseModel):
     """策略应用请求"""
     device_name: str
     policy_script: str
+    policy_name: Optional[str] = None
+    source_ip: Optional[str] = None
+    dest_ip: Optional[str] = None
+    protocol: Optional[str] = 'tcp'
+    dest_port: Optional[str] = None
+    source_zone: Optional[str] = None
+    dest_zone: Optional[str] = None
+    action: Optional[str] = 'permit'
     policy_id: Optional[int] = None
 
 
@@ -56,3 +64,21 @@ class PolicyRequestWithGroups(BaseModel):
     dest_group: Optional[str] = None
     port_group: Optional[str] = None
     protocol: str = 'tcp'
+
+
+class PolicyRuleItem(BaseModel):
+    """策略规则项"""
+    source_ip: str
+    dest_ip: str
+    protocol: str = 'tcp'
+    dest_port: str = 'any'
+    action: str = 'permit'
+    source_zone: Optional[str] = None
+    dest_zone: Optional[str] = None
+
+
+class PolicyValidateRequest(BaseModel):
+    """策略验证请求"""
+    device_id: str
+    direction: str
+    rules: List[PolicyRuleItem]

@@ -31,14 +31,20 @@ export const policyAPI = {
   // 生成策略
   generate: (policyData) => api.post('/policies/generate', policyData),
   
+  // 生成策略（dry_run模式）
+  generateDryRun: (policyData) => api.post('/policies/generate?dry_run=true', policyData),
+  
   // 应用策略
-  apply: (applyData) => api.post('/policies/apply', applyData),
+  apply: (applyData, simulate = true) => api.post(`/policies/apply?simulate=${simulate}`, applyData),
   
   // 获取所有策略
   getAll: () => api.get('/policies'),
   
   // 获取单个策略
-  get: (id) => api.get(`/policies/${id}`)
+  get: (id) => api.get(`/policies/${id}`),
+  
+  // 策略验证
+  validate: (data) => api.post('/policies/validate', data)
 }
 
 // 健康检查

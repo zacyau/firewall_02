@@ -78,11 +78,13 @@ class SecurityPolicy(Base):
     dest_ip = Column(String(50), nullable=False)
     protocol = Column(String(10), nullable=False)
     dest_port = Column(String(50), nullable=False)
+    action = Column(String(20), default='permit')
     source_zone = Column(String(50))
     dest_zone = Column(String(50))
     device_name = Column(String(100))
     policy_script = Column(Text)
     status = Column(String(20), default='pending')
+    error_message = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -94,10 +96,12 @@ class SecurityPolicy(Base):
             "dest_ip": self.dest_ip,
             "protocol": self.protocol,
             "dest_port": self.dest_port,
+            "action": self.action or "permit",
             "source_zone": self.source_zone,
             "dest_zone": self.dest_zone,
             "device_name": self.device_name,
             "status": self.status,
+            "error_message": self.error_message,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

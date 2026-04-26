@@ -79,6 +79,7 @@
 
             <div class="flex gap-3 pt-2">
               <button type="submit" class="btn-primary" :disabled="generating || !isFormValid">{{ generating ? '生成中...' : '生成策略' }}</button>
+              <button type="button" class="btn-default" :disabled="generating || !isFormValid" @click="generatePolicyDryRun">{{ validating ? '验证中...' : '模拟验证' }}</button>
               <button type="button" class="btn-default" @click="resetForm">重置</button>
             </div>
           </form>
@@ -146,10 +147,66 @@
       </div>
     </div>
 
+    <div v-if="validationReport" class="card">
+      <div class="card-header flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <h3 class="text-sm font-semibold text-gray-900">策略验证报告</h3>
+          <span v-if="validationReport.valid" class="badge-success">通过</span>
+          <span v-else class="badge-danger">未通过</span>
+        </div>
+        <button class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100" @click="validationReport = null">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="mb-4 text-sm text-gray-600">{{ validationReport.summary }}</div>
+
+        <div v-if="validationReport.issues?.length" class="space-y-2">
+          <div v-for="(issue, idx) in validationReport.issues" :key="idx"
+               :class="['flex items-start gap-3 px-4 py-3 rounded-lg border', issue.severity === 'error' ? 'bg-danger-50 border-danger-200' : 'bg-warning-50 border-warning-200']">
+            <div class="shrink-0 mt-0.5">
+              <svg v-if="issue.severity === 'error'" class="w-4 h-4 text-danger-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <svg v-else class="w-4 h-4 text-warning-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span :class="['text-xs font-medium px-1.5 py-0.5 rounded', issue.severity === 'error' ? 'bg-danger-100 text-danger-700' : 'bg-warning-100 text-warning-700']">
+                  {{ issue.type === 'conflict' ? '冲突' : '冗余' }}
+                </span>
+                <span class="text-xs text-gray-500">规则 #{{ issue.rule_index + 1 }}</span>
+                <span v-if="issue.existing_rule_id" class="text-xs text-gray-400">已有规则ID: {{ issue.existing_rule_id }}</span>
+              </div>
+              <div class="text-sm text-gray-700">{{ issue.desc }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="validationReport.device_reports && Object.keys(validationReport.device_reports).length > 1" class="mt-4 border-t border-gray-200 pt-4">
+          <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">各设备验证详情</h4>
+          <div class="space-y-3">
+            <div v-for="(report, deviceName) in validationReport.device_reports" :key="deviceName" class="border border-gray-200 rounded-lg px-4 py-3">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-sm font-medium text-gray-900">{{ deviceName }}</span>
+                <span v-if="report.valid" class="badge-success text-xs">通过</span>
+                <span v-else class="badge-danger text-xs">未通过</span>
+              </div>
+              <div class="text-xs text-gray-500">{{ report.summary }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="generatedData.firewall_policies?.length" class="card">
       <div class="card-header flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-900">生成的策略脚本</h3>
-        <button class="btn-default btn-sm" @click="copyAllScripts">复制所有脚本</button>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+            <input v-model="simulateMode" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+            模拟模式（无真实设备）
+          </label>
+          <button class="btn-default btn-sm" @click="copyAllScripts">复制所有脚本</button>
+        </div>
       </div>
       <div class="card-body space-y-4">
         <div v-for="(fw, index) in generatedData.firewall_policies" :key="index" class="border border-gray-200 rounded-lg overflow-hidden">
@@ -157,11 +214,16 @@
             <div class="flex items-center gap-2">
               <span class="text-sm font-medium text-gray-900">{{ fw.device_name }}</span>
               <span :class="vendorBadge(fw.vendor)">{{ fw.vendor?.toUpperCase() }}</span>
+              <span v-if="fw.applyStatus" :class="statusBadge(fw.applyStatus)">{{ statusText(fw.applyStatus) }}</span>
             </div>
             <div class="flex items-center gap-2">
               <button class="btn-default btn-sm" @click="copyScript(fw.policy_script, fw.device_name)">复制</button>
-              <button class="btn-primary btn-sm" @click="applyPolicy(fw)" :disabled="applying === fw.device_name">
-                {{ applying === fw.device_name ? '应用中...' : '应用到防火墙' }}
+              <button 
+                :class="fw.applyStatus === 'failed' ? 'btn-warning btn-sm' : 'btn-primary btn-sm'" 
+                @click="applyPolicy(fw)" 
+                :disabled="applying === fw.device_name || fw.applyStatus === 'applied'"
+              >
+                {{ applying === fw.device_name ? '应用中...' : fw.applyStatus === 'failed' ? '重试' : fw.applyStatus === 'applied' ? '已应用' : '应用到防火墙' }}
               </button>
             </div>
           </div>
@@ -186,6 +248,9 @@
               <div class="flex gap-2"><span class="text-gray-500 w-16 shrink-0">状态：</span><span :class="applyResult.status === 'success' ? 'badge-success' : 'badge-danger'">{{ applyResult.status }}</span></div>
               <div class="flex gap-2"><span class="text-gray-500 w-16 shrink-0">设备：</span><span>{{ applyResult.device_name }}</span></div>
               <div class="flex gap-2"><span class="text-gray-500 w-16 shrink-0">消息：</span><span>{{ applyResult.message }}</span></div>
+              <div v-if="simulateMode && applyResult.status === 'success'" class="mt-2 p-2 bg-warning-50 border border-warning-200 rounded text-xs text-warning-700">
+                当前为模拟模式，策略已保存到数据库但未下发到真实设备
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -198,18 +263,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { policyAPI, addressGroupAPI, portGroupAPI } from '../services/api'
 
 const router = useRouter()
+
+// sessionStorage key
+const STORAGE_KEY = 'policy_generator_form'
+
 const form = ref({ policy_name: '', description: '' })
 const generating = ref(false)
+const validating = ref(false)
 const applying = ref('')
 const generatedData = ref({})
 const message = ref('')
 const showApplyModal = ref(false)
 const applyResult = ref({})
+const validationReport = ref(null)
 const addressGroups = ref([])
 const portGroups = ref([])
 const sourceGroupName = ref('')
@@ -221,6 +292,63 @@ const portSearch = ref('')
 const showSourceDropdown = ref(false)
 const showDestDropdown = ref(false)
 const showPortDropdown = ref(false)
+const simulateMode = ref(true) // 默认模拟模式
+
+// 保存表单数据到 sessionStorage
+const saveFormToStorage = () => {
+  const data = {
+    form: form.value,
+    sourceGroupName: sourceGroupName.value,
+    destGroupName: destGroupName.value,
+    portGroupName: portGroupName.value,
+    simulateMode: simulateMode.value,
+    timestamp: Date.now()
+  }
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+// 从 sessionStorage 恢复表单数据
+const loadFormFromStorage = () => {
+  try {
+    const stored = sessionStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      const data = JSON.parse(stored)
+      // 恢复表单数据
+      if (data.form) {
+        form.value = { ...form.value, ...data.form }
+      }
+      if (data.sourceGroupName) {
+        sourceGroupName.value = data.sourceGroupName
+      }
+      if (data.destGroupName) {
+        destGroupName.value = data.destGroupName
+      }
+      if (data.portGroupName) {
+        portGroupName.value = data.portGroupName
+      }
+      if (data.simulateMode !== undefined) {
+        simulateMode.value = data.simulateMode
+      }
+      return true
+    }
+  } catch (e) {
+    console.error('恢复表单数据失败:', e)
+    sessionStorage.removeItem(STORAGE_KEY)
+  }
+  return false
+}
+
+// 清除 sessionStorage 中的表单数据
+const clearFormStorage = () => {
+  sessionStorage.removeItem(STORAGE_KEY)
+}
+
+// 监听表单数据变化，实时保存到 sessionStorage
+watch(() => form.value, saveFormToStorage, { deep: true })
+watch(sourceGroupName, saveFormToStorage)
+watch(destGroupName, saveFormToStorage)
+watch(portGroupName, saveFormToStorage)
+watch(simulateMode, saveFormToStorage)
 
 const selectedSourceAddresses = computed(() => addressGroups.value.find(g => g.name === sourceGroupName.value)?.addresses || [])
 const selectedDestAddresses = computed(() => addressGroups.value.find(g => g.name === destGroupName.value)?.addresses || [])
@@ -230,6 +358,20 @@ const filteredDestGroups = computed(() => { if (!destSearch.value) return addres
 const filteredPortGroups = computed(() => { if (!portSearch.value) return portGroups.value; return portGroups.value.filter(g => g.name.toLowerCase().includes(portSearch.value.toLowerCase())) })
 const isFormValid = computed(() => sourceGroupName.value && destGroupName.value && portGroupName.value && form.value.policy_name)
 const vendorBadge = (v) => ({ huawei: 'badge-primary', hillstone: 'badge-warning', h3c: 'badge-success', juniper: 'badge-danger' }[v] || 'badge-gray')
+
+const statusBadge = (status) => ({
+  pending: 'badge-gray',
+  applying: 'badge-blue',
+  applied: 'badge-success',
+  failed: 'badge-danger'
+}[status] || 'badge-gray')
+
+const statusText = (status) => ({
+  pending: '待下发',
+  applying: '下发中',
+  applied: '已应用',
+  failed: '失败'
+}[status] || status)
 
 const loadGroups = async () => {
   try {
@@ -246,7 +388,7 @@ const goToCreatePortGroup = () => router.push('/groups/port/create')
 
 const generatePolicy = async () => {
   if (!isFormValid.value) return
-  generating.value = true; message.value = ''
+  generating.value = true; message.value = ''; validationReport.value = null
   try {
     const r = await policyAPI.generate({ policy_name: form.value.policy_name, source_group: sourceGroupName.value, dest_group: destGroupName.value, port_group: portGroupName.value, description: form.value.description })
     generatedData.value = r.data.data || {}
@@ -255,20 +397,96 @@ const generatePolicy = async () => {
   finally { generating.value = false }
 }
 
+const generatePolicyDryRun = async () => {
+  if (!isFormValid.value) return
+  validating.value = true; message.value = ''; validationReport.value = null
+  try {
+    const r = await policyAPI.generateDryRun({ policy_name: form.value.policy_name, source_group: sourceGroupName.value, dest_group: destGroupName.value, port_group: portGroupName.value, description: form.value.description })
+    generatedData.value = r.data.data || {}
+    const validation = r.data.data.validation
+    if (validation) {
+      validationReport.value = validation
+      const conflictCount = validation.issues?.filter(i => i.type === 'conflict').length || 0
+      const redundancyCount = validation.issues?.filter(i => i.type === 'redundancy').length || 0
+      if (validation.valid) {
+        message.value = { type: 'success', text: `模拟验证完成：无冲突${redundancyCount > 0 ? `，发现 ${redundancyCount} 个冗余规则` : ''}` }
+      } else {
+        message.value = { type: 'error', text: `模拟验证发现 ${conflictCount} 个冲突${redundancyCount > 0 ? `，${redundancyCount} 个冗余规则` : ''}，请查看验证报告` }
+      }
+    } else {
+      message.value = { type: 'success', text: `策略生成成功！共 ${generatedData.value.firewall_count} 台防火墙需要配置` }
+    }
+  } catch (e) { message.value = { type: 'error', text: '验证失败：' + (e.response?.data?.detail || e.message) } }
+  finally { validating.value = false }
+}
+
 const applyPolicy = async (fwPolicy) => {
-  applying.value = fwPolicy.device_name; applyResult.value = { loading: true }; showApplyModal.value = true
-  try { const r = await policyAPI.apply({ device_name: fwPolicy.device_name, policy_script: fwPolicy.policy_script }); applyResult.value = r.data }
-  catch (e) { applyResult.value = { error: '应用失败：' + (e.response?.data?.detail || e.message) } }
-  finally { applying.value = '' }
+  applying.value = fwPolicy.device_name
+  applyResult.value = { loading: true }
+  showApplyModal.value = true
+  
+  // 设置状态为 applying
+  fwPolicy.applyStatus = 'applying'
+  
+  try {
+    const r = await policyAPI.apply({
+      policy_name: form.value.policy_name,
+      device_name: fwPolicy.device_name,
+      policy_script: fwPolicy.policy_script,
+      source_ip: sourceGroupName.value,
+      dest_ip: destGroupName.value,
+      protocol: portGroups.value.find(g => g.name === portGroupName.value)?.protocol || 'tcp',
+      dest_port: portGroupName.value,
+      source_zone: fwPolicy.source_zone,
+      dest_zone: fwPolicy.dest_zone,
+      action: 'permit'
+    }, simulateMode.value)
+    
+    applyResult.value = r.data
+    
+    // 根据结果更新状态
+    if (r.data.status === 'success') {
+      fwPolicy.applyStatus = 'applied'
+      fwPolicy.policyId = r.data.policy_id
+    } else {
+      fwPolicy.applyStatus = 'failed'
+      fwPolicy.errorMessage = r.data.message
+    }
+  } catch (e) {
+    applyResult.value = { error: '应用失败：' + (e.response?.data?.detail || e.message) }
+    fwPolicy.applyStatus = 'failed'
+    fwPolicy.errorMessage = e.response?.data?.detail || e.message
+  } finally {
+    applying.value = ''
+  }
 }
 
 const copyScript = (script, name) => { navigator.clipboard.writeText(script).then(() => alert(`${name} 的策略脚本已复制`)).catch(() => alert('复制失败')) }
 const copyAllScripts = () => { const s = generatedData.value.firewall_policies.map(fw => `=== ${fw.device_name} ===\n${fw.policy_script}`).join('\n\n'); navigator.clipboard.writeText(s).then(() => alert('所有脚本已复制')).catch(() => {}) }
 
-const resetForm = () => { form.value = { policy_name: '', description: '' }; sourceGroupName.value = ''; destGroupName.value = ''; portGroupName.value = ''; generatedData.value = {}; message.value = '' }
+const resetForm = () => {
+  form.value = { policy_name: '', description: '' }
+  sourceGroupName.value = ''
+  destGroupName.value = ''
+  portGroupName.value = ''
+  generatedData.value = {}
+  message.value = ''
+  validationReport.value = null
+  clearFormStorage()
+}
 
 const closeAllDropdowns = (e) => { if (!e.target.closest('.relative')) { showSourceDropdown.value = false; showDestDropdown.value = false; showPortDropdown.value = false } }
 
-onMounted(() => { loadGroups(); document.addEventListener('click', closeAllDropdowns) })
+onMounted(() => {
+  loadGroups()
+  // 页面加载时从 sessionStorage 恢复数据
+  const restored = loadFormFromStorage()
+  if (restored) {
+    message.value = { type: 'success', text: '已恢复之前的输入数据' }
+    // 3秒后清除提示
+    setTimeout(() => { if (message.value?.text === '已恢复之前的输入数据') message.value = '' }, 3000)
+  }
+  document.addEventListener('click', closeAllDropdowns)
+})
 onBeforeUnmount(() => { document.removeEventListener('click', closeAllDropdowns) })
 </script>

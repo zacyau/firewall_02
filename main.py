@@ -26,9 +26,30 @@ async def startup_event():
     """应用启动时初始化数据库"""
     db = Database()
     db.create_tables()
+    _migrate_add_action_column(db)
     print("数据库初始化完成")
 
     print(f"已加载 {len(config_loader.get_devices())} 个设备配置")
+
+
+def _migrate_add_action_column(db):
+    """迁移：为 security_policies 表添加 action 列"""
+    try:
+        from sqlalchemy import text
+        session = db.get_session()
+        result = session.execute(
+            text("PRAGMA table_info(security_policies)")
+        ).fetchall()
+        columns = [row[1] for row in result]
+        if 'action' not in columns:
+            session.execute(
+                text("ALTER TABLE security_policies ADD COLUMN action VARCHAR(20) DEFAULT 'permit'")
+            )
+            session.commit()
+            print("数据库迁移：已添加 security_policies.action 列")
+        session.close()
+    except Exception as e:
+        print(f"数据库迁移检查：{e}")
 
 
 @app.get("/", summary="首页")

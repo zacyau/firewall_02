@@ -407,14 +407,25 @@ class PolicyValidator:
         return "none"
 
     def _parse_port_list(self, port_str: str) -> List[Tuple[int, int]]:
-        """解析端口字符串为范围列表"""
+        """解析端口字符串为范围列表
+        
+        支持格式：
+        - 单个端口: "80", "tcp_8080", "udp_53"
+        - 端口范围: "80-443"
+        - 多端口: "80,443,8080"
+        """
         ranges = []
         for part in port_str.split(","):
             part = part.strip()
             if not part:
                 continue
             try:
-                if "-" in part:
+                # 处理 tcp_8080 / udp_53 等格式
+                if "_" in part:
+                    _, port_num = part.rsplit("_", 1)
+                    p = int(port_num)
+                    ranges.append((p, p))
+                elif "-" in part:
                     start, end = part.split("-", 1)
                     ranges.append((int(start.strip()), int(end.strip())))
                 else:

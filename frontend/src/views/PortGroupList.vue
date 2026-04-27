@@ -178,7 +178,7 @@ const submitEdit = async () => {
   submitting.value = true
   try {
     const ports = portsText.value.split('\n').map(p => p.trim()).filter(p => p)
-    await portGroupAPI.update(editForm.value.name, { description: editForm.value.description, protocol: editForm.value.protocol, ports })
+    await portGroupAPI.update(editForm.value.name, { name: editForm.value.name, description: editForm.value.description, protocol: editForm.value.protocol, ports })
     showEditModal.value = false; await loadGroups()
   } catch (e) { alert('保存失败：' + (e.response?.data?.detail || e.message)) }
   finally { submitting.value = false }

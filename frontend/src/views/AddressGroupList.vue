@@ -169,7 +169,7 @@ const submitEdit = async () => {
   submitting.value = true
   try {
     const addrs = addressesText.value.split('\n').map(a => a.trim()).filter(a => a)
-    await addressGroupAPI.update(editForm.value.name, { description: editForm.value.description, addresses: addrs })
+    await addressGroupAPI.update(editForm.value.name, { name: editForm.value.name, description: editForm.value.description, addresses: addrs })
     showEditModal.value = false; await loadGroups()
   } catch (e) { alert('保存失败：' + (e.response?.data?.detail || e.message)) }
   finally { submitting.value = false }

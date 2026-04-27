@@ -317,6 +317,12 @@ class PolicyValidator:
         nets1 = self._parse_ip_list(ip1)
         nets2 = self._parse_ip_list(ip2)
 
+        # 如果解析失败，尝试从地址组查询
+        if not nets1:
+            nets1 = self._resolve_address_group(ip1)
+        if not nets2:
+            nets2 = self._resolve_address_group(ip2)
+
         if not nets1 or not nets2:
             return "none"
 
@@ -356,6 +362,19 @@ class PolicyValidator:
                 except ValueError:
                     continue
         return networks
+
+    def _resolve_address_group(self, group_name: str) -> List[ipaddress._BaseNetwork]:
+        """从数据库查询地址组并解析为网络对象列表"""
+        from database.models import AddressGroup
+        session = self.db.get_session()
+        try:
+            group = session.query(AddressGroup).filter(AddressGroup.name == group_name).first()
+            if group and group.addresses:
+                addresses = group.addresses if isinstance(group.addresses, list) else []
+                return self._parse_ip_list(",".join(addresses))
+            return []
+        finally:
+            session.close()
 
     def _network_contains(self, parent: ipaddress._BaseNetwork, child: ipaddress._BaseNetwork) -> bool:
         """判断 parent 网络是否包含 child 网络"""

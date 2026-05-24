@@ -192,7 +192,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { configAPI } from '../services/api'
+import { deviceAPI } from '../services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -216,7 +216,7 @@ const form = reactive({
 
 const loadDevice = async (name) => {
   try {
-    const r = await configAPI.get(name)
+    const r = await deviceAPI.get(name)
     if (r.data.device) {
       const d = r.data.device
       form.name = d.name
@@ -360,9 +360,9 @@ const handleSubmit = async () => {
 
     let r
     if (isEdit.value) {
-      r = await configAPI.update(form.name, data)
+      r = await deviceAPI.update(form.name, data)
     } else {
-      r = await configAPI.create(data)
+      r = await deviceAPI.create(data)
     }
 
     if (r.data.status === 'success') {

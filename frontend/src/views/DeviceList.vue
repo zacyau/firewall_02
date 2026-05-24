@@ -120,7 +120,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { deviceAPI, configAPI } from '../services/api'
+import { deviceAPI } from '../services/api'
 
 const devices = ref([])
 const loading = ref(false)
@@ -146,7 +146,7 @@ const deviceConfigYaml = computed(() => {
 
 const loadDevices = async () => {
   loading.value = true; error.value = ''
-  try { const r = await configAPI.getAll(); devices.value = r.data.devices || [] }
+  try { const r = await deviceAPI.getAll(); devices.value = r.data.devices || [] }
   catch (e) { error.value = '加载设备列表失败：' + (e.message || '未知错误') }
   finally { loading.value = false }
 }
@@ -162,7 +162,7 @@ const confirmDelete = async (name) => {
   if (!confirm(`确定要删除设备 "${name}" 吗？删除后将无法恢复。`)) return
   deleting.value = name
   try {
-    const r = await configAPI.delete(name)
+    const r = await deviceAPI.delete(name)
     if (r.data.status === 'success') {
       alert('设备已删除')
       await loadDevices()

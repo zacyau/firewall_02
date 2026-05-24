@@ -2,18 +2,6 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 
-class DeviceRegisterRequest(BaseModel):
-    """设备注册请求"""
-    name: str
-    vendor: str
-    ip: str
-    port: Optional[int] = 22
-    username: Optional[str] = None
-    password: Optional[str] = None
-    location: Optional[str] = None
-    zones: Optional[dict] = {}
-
-
 class PolicyApplyRequest(BaseModel):
     """策略应用请求"""
     device_name: str

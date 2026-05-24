@@ -16,14 +16,26 @@ export const deviceAPI = {
   // 获取单个设备
   get: (name) => api.get(`/devices/${name}`),
   
-  // 注册设备
-  register: (deviceData) => api.post('/devices/register', deviceData),
+  // 新增设备
+  create: (data) => api.post('/devices', data),
+  
+  // 更新设备
+  update: (name, data) => api.put(`/devices/${name}`, data),
   
   // 删除设备
   delete: (name) => api.delete(`/devices/${name}`),
   
   // 检查心跳
-  checkHeartbeat: (name) => api.get(`/devices/${name}/heartbeat`)
+  checkHeartbeat: (name) => api.get(`/devices/${name}/heartbeat`),
+  
+  // 验证设备配置
+  validate: (data) => api.post('/devices/validate', data),
+  
+  // 导出设备配置
+  export: () => api.get('/devices/export'),
+  
+  // 重新导入种子
+  seed: () => api.post('/devices/seed')
 }
 
 // 策略管理 API
@@ -76,30 +88,6 @@ export const portGroupAPI = {
   applyConfig: (name, deviceName) => api.post(`/groups/port/${name}/apply/${deviceName}`),
   applyAll: (name) => api.post(`/groups/port/${name}/apply-all`),
   getStatus: (name) => api.get(`/groups/port/${name}/status`)
-}
-
-// 配置文件管理 API（支持前端直接编辑）
-export const configAPI = {
-  // 获取所有设备配置
-  getAll: () => api.get('/config/devices'),
-
-  // 获取单个设备配置
-  get: (name) => api.get(`/config/devices/${name}`),
-
-  // 更新设备配置
-  update: (name, data) => api.put(`/config/devices/${name}`, data),
-
-  // 新增设备配置
-  create: (data) => api.post('/config/devices', data),
-
-  // 删除设备配置
-  delete: (name) => api.delete(`/config/devices/${name}`),
-
-  // 备份配置文件
-  backup: () => api.post('/config/devices/backup'),
-
-  // 验证设备配置
-  validate: (data) => api.post('/config/devices/validate', data)
 }
 
 export default api

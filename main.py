@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.routes import router
 from database import Database
-from services.config_loader import config_loader
+from services.config_manager import config_manager
 
 app = FastAPI(
     title="防火墙自动化运维平台",
@@ -29,7 +29,7 @@ async def startup_event():
     _migrate_add_action_column(db)
     print("数据库初始化完成")
 
-    print(f"已加载 {len(config_loader.get_devices())} 个设备配置")
+    print(f"已加载 {len(config_manager.get_devices())} 个设备配置")
 
 
 def _migrate_add_action_column(db):
@@ -79,7 +79,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Firewall Automation Platform",
-        "device_count": len(config_loader.get_devices())
+        "device_count": len(config_manager.get_devices())
     }
 
 

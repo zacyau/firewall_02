@@ -70,12 +70,23 @@ class HillstoneFirewallAdapter(FirewallAdapter):
 
     def get_zone_by_ip(self, ip_address: str) -> str:
         """根据IP判断安全区域"""
-        zone_mappings = self.device_config.get("zone_mappings", {})
+        zones = self.device_config.get("zones", {})
 
-        for zone, ip_ranges in zone_mappings.items():
-            for ip_range in ip_ranges:
-                if self._ip_in_range(ip_address, ip_range):
-                    return zone
+        # 遍历 edge 区域
+        edge_zones = zones.get("edge", {})
+        for zone_name, networks in edge_zones.items():
+            for net in networks:
+                if self._ip_in_range(ip_address, net):
+                    return zone_name
+
+        # 遍历 forward-in/forward-out/mixed 区域的 net
+        for zone_type in ["forward-in", "forward-out", "mixed"]:
+            for zone_name, zone_config in zones.get(zone_type, {}).items():
+                if isinstance(zone_config, dict):
+                    for net in zone_config.get("net", []):
+                        if self._ip_in_range(ip_address, net):
+                            return zone_name
+
         return "untrust"
 
     def _ip_in_range(self, ip: str, cidr: str) -> bool:

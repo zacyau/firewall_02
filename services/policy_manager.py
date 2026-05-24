@@ -1,16 +1,18 @@
 from typing import Dict, List, Any
 from datetime import datetime
-from database import Database, SecurityPolicy, PolicyAuditLog, FirewallDevice, AddressGroup, PortGroup
+from database import Database, SecurityPolicy, PolicyAuditLog, AddressGroup, PortGroup
 from services.path_engine import PathCalculator
 from factory import FirewallFactory
+from config.devices import firewall_devices
 
 
 class PolicyManager:
     """策略管理器"""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database = None):
         self.db = db
-        self.path_calculator = PathCalculator()
+        self._devices = firewall_devices
+        self.path_calculator = PathCalculator(firewall_devices)
         self.factory = FirewallFactory()
 
     def _get_address_groups_from_db(self) -> Dict[str, List[str]]:
@@ -68,7 +70,7 @@ class PolicyManager:
                 "vendor": self._get_device_vendor(fw_policy["device_name"]),
                 "ip": self._get_device_ip(fw_policy["device_name"]),
                 "port": self._get_device_port(fw_policy["device_name"]),
-                "zone_mappings": {}
+                "zones": self._get_device_zones(fw_policy["device_name"])
             }
 
             adapter = self.factory.create_firewall(device_config)
@@ -189,14 +191,14 @@ class PolicyManager:
                 }
 
             device_config = {
-                "name": device.name,
-                "vendor": device.vendor,
-                "ip": device.ip,
-                "port": device.port,
-                "username": device.username,
-                "password": device.password,
-                "location": device.location,
-                "zone_mappings": device.zone_mappings
+                "name": device.get("name", device_name),
+                "vendor": device.get("vendor", "huawei"),
+                "ip": device.get("ip", ""),
+                "port": device.get("port", 22),
+                "username": device.get("username", ""),
+                "password": device.get("password", ""),
+                "location": device.get("location", ""),
+                "zones": device.get("zones", {})
             }
 
             adapter = self.factory.create_firewall(device_config)
@@ -267,39 +269,36 @@ class PolicyManager:
             session.close()
 
     def _get_device_by_name(self, device_name: str) -> Any:
-        """根据名称获取设备"""
-        session = self.db.get_session()
-        try:
-            device = session.query(FirewallDevice).filter(
-                FirewallDevice.name == device_name
-            ).first()
-            return device
-        finally:
-            session.close()
+        """根据名称获取设备（从配置文件）"""
+        return self._devices.get(device_name)
 
     def _get_device_vendor(self, device_name: str) -> str:
         """获取设备厂商"""
         device = self._get_device_by_name(device_name)
         if device:
-            return device.vendor
-        from config.devices import DEVICES
-        return DEVICES.get(device_name, {}).get("vendor", "huawei")
+            return device.get("vendor", "huawei")
+        return "huawei"
 
     def _get_device_ip(self, device_name: str) -> str:
         """获取设备IP"""
         device = self._get_device_by_name(device_name)
         if device:
-            return device.ip
-        from config.devices import DEVICES
-        return DEVICES.get(device_name, {}).get("ip", "192.168.1.10")
+            return device.get("ip", "192.168.1.10")
+        return "192.168.1.10"
 
     def _get_device_port(self, device_name: str) -> int:
         """获取设备端口"""
         device = self._get_device_by_name(device_name)
         if device:
-            return device.port
-        from config.devices import DEVICES
-        return DEVICES.get(device_name, {}).get("port", 22)
+            return device.get("port", 22)
+        return 22
+
+    def _get_device_zones(self, device_name: str) -> dict:
+        """获取设备区域配置"""
+        device = self._get_device_by_name(device_name)
+        if device:
+            return device.get("zones", {})
+        return {}
 
     def generate_policy_with_groups(self, policy_config: Dict[str, Any], address_groups: Dict[str, Any], port_groups: Dict[str, Any]) -> Dict[str, Any]:
         """基于地址组和端口组生成策略配置
@@ -351,7 +350,7 @@ class PolicyManager:
                     "vendor": self._get_device_vendor(fw_policy["device_name"]),
                     "ip": self._get_device_ip(fw_policy["device_name"]),
                     "port": self._get_device_port(fw_policy["device_name"]),
-                    "zone_mappings": {}
+                    "zones": self._get_device_zones(fw_policy["device_name"])
                 }
 
                 fw_policy["protocol"] = effective_protocol
@@ -407,7 +406,7 @@ class PolicyManager:
 
         path_group_results = []
         for path_group in merged_path_groups:
-            path_device_names = [fw["device_name"] for fw in path_group["path"]]
+            path_device_names = [fw["firewall"] for fw in path_group["path"]]
             unique_path_devices = []
             seen = set()
             for dn in path_device_names:

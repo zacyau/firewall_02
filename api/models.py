@@ -11,18 +11,7 @@ class DeviceRegisterRequest(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     location: Optional[str] = None
-    connected_networks: Optional[list] = []
-    routing_table: Optional[list] = []
-
-
-class PolicyRequest(BaseModel):
-    """策略请求"""
-    policy_name: str
-    source_ip: str
-    dest_ip: str
-    protocol: str = 'tcp'
-    dest_port: str
-    description: Optional[str] = None
+    zones: Optional[dict] = {}
 
 
 class PolicyApplyRequest(BaseModel):

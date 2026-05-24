@@ -1,7 +1,11 @@
 # 防火墙设备配置 - 统一配置格式
 # 所有设备信息统一维护在此文件
 #
-# 生成时间: 2026-05-23 22:27:12
+# 生成时间: 2026-05-23
+#
+# 网段格式说明:
+# - edge 区域: 使用 CIDR 格式，如 "172.25.1.0/24" 表示 172.25.1.0-172.25.1.255
+# - forward-in/forward-out/mixed 区域: net/allow 字段同样使用 CIDR 格式
 
 firewall_devices = {
     'USG6660': {
@@ -15,7 +19,7 @@ firewall_devices = {
         'description': '',
         'zones': {
             'edge': {
-                'Core_Server': ['172.25.1.0/24', '172.25.2.0/24'],
+                'Core_Server': ['172.25.1.0/24', '172.26.1.0/24'],
                 'PC': ['172.27.1.0/24'],
             },
             'forward-in': {
@@ -51,49 +55,7 @@ firewall_devices = {
             },
         },
     },
-    'USG6615E': {
-        'name': 'USG6615E',
-        'vendor': 'huawei',
-        'ip': '10.0.5.91',
-        'port': 22,
-        'username': '',
-        'password': '',
-        'location': '',
-        'description': '',
-        'zones': {
-            'forward-in': {
-                'trust': {
-                    'net': [],
-                    'dev': ['USG6660', 'K6680'],
-                },
-            },
-            'edge': {
-                'untrust': ['129.1.0.0/16'],
-            },
-        },
-    },
-    'A3800': {
-        'name': 'A3800',
-        'vendor': 'hillstone',
-        'ip': '172.28.0.62',
-        'port': 22,
-        'username': '',
-        'password': '',
-        'location': '',
-        'description': '',
-        'zones': {
-            'forward-in': {
-                'trust': {
-                    'net': [],
-                    'dev': ['USG6660', 'K6680'],
-                },
-            },
-            'forward-out': {
-                'untrust': {
-                    'net': [],
-                    'allow': ['172.28.32.0/24'],
-                },
-            },
-        },
-    },
 }
+
+# 为了兼容旧代码，保留 DEVICES 别名指向 firewall_devices
+DEVICES = firewall_devices

@@ -1,6 +1,7 @@
 import ipaddress
 from typing import Dict, List, Any, Optional, Tuple
-from database import Database, SecurityPolicy, FirewallDevice
+from database import Database, SecurityPolicy
+from config.devices import firewall_devices
 
 
 class PolicyValidator:
@@ -483,15 +484,17 @@ class PolicyValidator:
             return f"{action} {protocol} {source_ip} -> {dest_ip}"
         return f"{action} {protocol} {source_ip} -> {dest_ip} eq {dest_port}"
 
-    def _get_device(self, device_name: str) -> Optional[Any]:
-        """获取设备"""
-        session = self.db.get_session()
-        try:
-            return session.query(FirewallDevice).filter(
-                FirewallDevice.name == device_name
-            ).first()
-        finally:
-            session.close()
+    def _get_device(self, device_name: str) -> Optional[Dict[str, Any]]:
+        """获取设备（从配置文件）"""
+        config = firewall_devices.get(device_name)
+        if config:
+            return {
+                "name": config.get("name", device_name),
+                "vendor": config.get("vendor", "huawei"),
+                "ip": config.get("ip", ""),
+                "zones": config.get("zones", {})
+            }
+        return None
 
     def _get_existing_rules(self, device_name: str, direction: str) -> List[Dict[str, Any]]:
         """获取设备上已存在的策略规则"""

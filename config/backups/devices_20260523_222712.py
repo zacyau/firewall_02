@@ -1,7 +1,7 @@
 # 防火墙设备配置 - 统一配置格式
 # 所有设备信息统一维护在此文件
 #
-# 生成时间: 2026-05-23 22:27:12
+# 生成时间: 2026-05-23 22:16:26
 
 firewall_devices = {
     'USG6660': {
@@ -72,28 +72,7 @@ firewall_devices = {
             },
         },
     },
-    'A3800': {
-        'name': 'A3800',
-        'vendor': 'hillstone',
-        'ip': '172.28.0.62',
-        'port': 22,
-        'username': '',
-        'password': '',
-        'location': '',
-        'description': '',
-        'zones': {
-            'forward-in': {
-                'trust': {
-                    'net': [],
-                    'dev': ['USG6660', 'K6680'],
-                },
-            },
-            'forward-out': {
-                'untrust': {
-                    'net': [],
-                    'allow': ['172.28.32.0/24'],
-                },
-            },
-        },
-    },
 }
+
+# 为了兼容旧代码，保留 DEVICES 别名指向 firewall_devices
+DEVICES = firewall_devices

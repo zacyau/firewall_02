@@ -1,14 +1,13 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import List
-from api.models import DeviceRegisterRequest, PolicyRequest, PolicyApplyRequest, AddressGroupRequest, PortGroupRequest, PolicyRequestWithGroups, PolicyValidateRequest
-from services import DeviceManager, PolicyManager, GroupManager
+from api.models import DeviceRegisterRequest, PolicyApplyRequest, AddressGroupRequest, PortGroupRequest, PolicyRequestWithGroups, PolicyValidateRequest
+from services import PolicyManager, GroupManager
 from services.policy_validator import PolicyValidator
+from services.config_manager import config_manager
 from database import Database
 
 router = APIRouter()
 
 db = Database()
-device_manager = DeviceManager(db)
 policy_manager = PolicyManager(db)
 group_manager = GroupManager(db)
 policy_validator = PolicyValidator(db)
@@ -16,31 +15,34 @@ policy_validator = PolicyValidator(db)
 
 @router.post("/devices/register", summary="注册防火墙设备")
 async def register_device(request: DeviceRegisterRequest):
-    """注册新的防火墙设备"""
+    """注册新的防火墙设备（通过配置文件）"""
     device_config = request.dict()
-    result = device_manager.register_device(device_config)
+    name = device_config.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="缺少设备名称 name")
 
-    if result.get("status") in ["registered", "updated"]:
+    result = config_manager.add_device(name, device_config)
+    if result.get('status') == 'success':
         return result
-    else:
-        raise HTTPException(status_code=400, detail=result.get("message"))
+    raise HTTPException(status_code=400, detail=result.get('message'))
 
 
 @router.get("/devices", summary="获取所有设备")
 async def get_all_devices():
     """获取所有注册的防火墙设备"""
-    devices = device_manager.get_all_devices()
+    devices = config_manager.get_devices()
+    device_list = list(devices.values())
     return {
         "status": "success",
-        "count": len(devices),
-        "devices": devices
+        "count": len(device_list),
+        "devices": device_list
     }
 
 
 @router.get("/devices/{device_name}", summary="获取单个设备信息")
 async def get_device(device_name: str):
     """获取指定设备的信息"""
-    device = device_manager.get_device(device_name)
+    device = config_manager.get_device(device_name)
     if device:
         return {
             "status": "success",
@@ -53,18 +55,30 @@ async def get_device(device_name: str):
 @router.get("/devices/{device_name}/heartbeat", summary="检查设备心跳")
 async def check_heartbeat(device_name: str):
     """检查指定防火墙设备的心跳状态"""
-    result = device_manager.check_heartbeat(device_name)
-    return result
+    device = config_manager.get_device(device_name)
+    if not device:
+        raise HTTPException(status_code=404, detail=f"设备 {device_name} 不存在")
+
+    try:
+        from factory import FirewallFactory
+        factory = FirewallFactory()
+        adapter = factory.create_firewall(device)
+        return adapter.check_heartbeat()
+    except Exception as e:
+        return {
+            "status": "error",
+            "device_name": device_name,
+            "message": str(e)
+        }
 
 
 @router.delete("/devices/{device_name}", summary="删除设备")
 async def delete_device(device_name: str):
     """删除指定的防火墙设备"""
-    result = device_manager.delete_device(device_name)
-    if result.get("status") == "success":
+    result = config_manager.delete_device(device_name)
+    if result.get('status') == 'success':
         return result
-    else:
-        raise HTTPException(status_code=404, detail=result.get("message"))
+    raise HTTPException(status_code=404, detail=result.get('message'))
 
 
 @router.post("/policies/generate", summary="生成防火墙策略")
@@ -368,3 +382,75 @@ async def get_port_group_status(group_name: str):
         "group_name": group_name,
         "statuses": statuses
     }
+
+
+# ==================== 配置文件管理 API ====================
+
+@router.get("/config/devices", summary="获取所有设备配置")
+async def get_all_device_configs():
+    """获取所有设备配置（从配置文件）"""
+    devices = config_manager.get_devices()
+    return {
+        "status": "success",
+        "count": len(devices),
+        "devices": devices
+    }
+
+
+@router.get("/config/devices/{device_name}", summary="获取单个设备配置")
+async def get_device_config(device_name: str):
+    """获取指定设备的配置"""
+    device = config_manager.get_device(device_name)
+    if device:
+        return {
+            "status": "success",
+            "device": device
+        }
+    raise HTTPException(status_code=404, detail=f"设备 {device_name} 不存在")
+
+
+@router.put("/config/devices/{device_name}", summary="更新设备配置")
+async def update_device_config(device_name: str, request: dict):
+    """更新指定设备的配置"""
+    result = config_manager.update_device(device_name, request)
+    if result.get('status') == 'success':
+        return result
+    raise HTTPException(status_code=400, detail=result.get('message'))
+
+
+@router.post("/config/devices", summary="新增设备配置")
+async def add_device_config(request: dict):
+    """新增设备配置"""
+    name = request.get('name')
+    if not name:
+        raise HTTPException(status_code=400, detail="缺少设备名称 name")
+
+    result = config_manager.add_device(name, request)
+    if result.get('status') == 'success':
+        return result
+    raise HTTPException(status_code=400, detail=result.get('message'))
+
+
+@router.delete("/config/devices/{device_name}", summary="删除设备配置")
+async def delete_device_config(device_name: str):
+    """删除设备配置"""
+    result = config_manager.delete_device(device_name)
+    if result.get('status') == 'success':
+        return result
+    raise HTTPException(status_code=400, detail=result.get('message'))
+
+
+@router.post("/config/devices/backup", summary="备份配置文件")
+async def backup_config():
+    """手动创建配置文件备份"""
+    result = config_manager.create_backup()
+    if result.get('status') == 'success':
+        return result
+    raise HTTPException(status_code=400, detail=result.get('message'))
+
+
+@router.post("/config/devices/validate", summary="验证设备配置")
+async def validate_device_config(request: dict):
+    """验证设备配置格式"""
+    result = config_manager.validate_device_config(request)
+    return result

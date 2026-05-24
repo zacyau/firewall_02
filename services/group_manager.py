@@ -1,7 +1,8 @@
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-from database import Database, AddressGroup, PortGroup, AddressGroupDeviceStatus, PortGroupDeviceStatus, FirewallDevice
+from database import Database, AddressGroup, PortGroup, AddressGroupDeviceStatus, PortGroupDeviceStatus
 from factory.firewall_factory import FirewallFactory
+from config.devices import firewall_devices
 
 
 class GroupManager:
@@ -192,22 +193,27 @@ class GroupManager:
         finally:
             session.close()
 
-    def _get_all_devices(self) -> List[FirewallDevice]:
-        """获取所有防火墙设备"""
-        session = self.db.get_session()
-        try:
-            return session.query(FirewallDevice).all()
-        finally:
-            session.close()
+    def _get_all_devices(self) -> List[Dict[str, Any]]:
+        """获取所有防火墙设备（从配置文件）"""
+        result = []
+        for name, config in firewall_devices.items():
+            result.append({
+                "name": config.get("name", name),
+                "vendor": config.get("vendor", "huawei"),
+                "ip": config.get("ip", ""),
+                "port": config.get("port", 22),
+                "zones": config.get("zones", {})
+            })
+        return result
 
-    def _generate_address_group_config(self, group: AddressGroup, device: FirewallDevice) -> str:
+    def _generate_address_group_config(self, group: AddressGroup, device: Dict[str, Any]) -> str:
         """生成地址组配置脚本"""
         device_config = {
-            "name": device.name,
-            "vendor": device.vendor,
-            "ip": device.ip,
-            "port": device.port,
-            "zone_mappings": device.zone_mappings or {}
+            "name": device["name"],
+            "vendor": device["vendor"],
+            "ip": device["ip"],
+            "port": device.get("port", 22),
+            "zones": device.get("zones", {})
         }
         adapter = self.factory.create_firewall(device_config)
 
@@ -215,20 +221,20 @@ class GroupManager:
             "group_name": group.name,
             "addresses": group.addresses or [],
             "description": group.description or "",
-            "device_name": device.name,
-            "vendor": device.vendor
+            "device_name": device["name"],
+            "vendor": device["vendor"]
         }
 
         return adapter._render_template("address_group.j2", context)
 
-    def _generate_port_group_config(self, group: PortGroup, device: FirewallDevice) -> str:
+    def _generate_port_group_config(self, group: PortGroup, device: Dict[str, Any]) -> str:
         """生成端口组配置脚本"""
         device_config = {
-            "name": device.name,
-            "vendor": device.vendor,
-            "ip": device.ip,
-            "port": device.port,
-            "zone_mappings": device.zone_mappings or {}
+            "name": device["name"],
+            "vendor": device["vendor"],
+            "ip": device["ip"],
+            "port": device.get("port", 22),
+            "zones": device.get("zones", {})
         }
         adapter = self.factory.create_firewall(device_config)
 
@@ -237,8 +243,8 @@ class GroupManager:
             "ports": group.ports or [],
             "protocol": group.protocol or "tcp",
             "description": group.description or "",
-            "device_name": device.name,
-            "vendor": device.vendor
+            "device_name": device["name"],
+            "vendor": device["vendor"]
         }
 
         return adapter._render_template("port_group.j2", context)
@@ -257,21 +263,22 @@ class GroupManager:
             if not group:
                 return {"status": "error", "message": f"地址组 {group_name} 不存在"}
 
-            devices = session.query(FirewallDevice).all()
+            devices = self._get_all_devices()
             if not devices:
                 return {"status": "error", "message": "没有可用的防火墙设备"}
 
             results = []
             for device in devices:
+                device_name = device["name"]
                 status = session.query(AddressGroupDeviceStatus).filter(
                     AddressGroupDeviceStatus.group_name == group_name,
-                    AddressGroupDeviceStatus.device_name == device.name
+                    AddressGroupDeviceStatus.device_name == device_name
                 ).first()
 
                 if status and status.status == "created":
                     results.append({
-                        "device_name": device.name,
-                        "vendor": device.vendor,
+                        "device_name": device_name,
+                        "vendor": device["vendor"],
                         "status": "created",
                         "config_script": status.config_script,
                         "message": "该地址组已在此防火墙上配置"
@@ -282,7 +289,7 @@ class GroupManager:
                     if not status:
                         status = AddressGroupDeviceStatus(
                             group_name=group_name,
-                            device_name=device.name,
+                            device_name=device_name,
                             status="pending",
                             config_script=config_script
                         )
@@ -292,8 +299,8 @@ class GroupManager:
                         status.status = "pending"
 
                     results.append({
-                        "device_name": device.name,
-                        "vendor": device.vendor,
+                        "device_name": device_name,
+                        "vendor": device["vendor"],
                         "status": "pending",
                         "config_script": config_script,
                         "message": "配置已生成，等待应用"
@@ -325,21 +332,22 @@ class GroupManager:
             if not group:
                 return {"status": "error", "message": f"端口组 {group_name} 不存在"}
 
-            devices = session.query(FirewallDevice).all()
+            devices = self._get_all_devices()
             if not devices:
                 return {"status": "error", "message": "没有可用的防火墙设备"}
 
             results = []
             for device in devices:
+                device_name = device["name"]
                 status = session.query(PortGroupDeviceStatus).filter(
                     PortGroupDeviceStatus.group_name == group_name,
-                    PortGroupDeviceStatus.device_name == device.name
+                    PortGroupDeviceStatus.device_name == device_name
                 ).first()
 
                 if status and status.status == "created":
                     results.append({
-                        "device_name": device.name,
-                        "vendor": device.vendor,
+                        "device_name": device_name,
+                        "vendor": device["vendor"],
                         "status": "created",
                         "config_script": status.config_script,
                         "message": "该端口组已在此防火墙上配置"
@@ -350,7 +358,7 @@ class GroupManager:
                     if not status:
                         status = PortGroupDeviceStatus(
                             group_name=group_name,
-                            device_name=device.name,
+                            device_name=device_name,
                             status="pending",
                             config_script=config_script
                         )
@@ -360,8 +368,8 @@ class GroupManager:
                         status.status = "pending"
 
                     results.append({
-                        "device_name": device.name,
-                        "vendor": device.vendor,
+                        "device_name": device_name,
+                        "vendor": device["vendor"],
                         "status": "pending",
                         "config_script": config_script,
                         "message": "配置已生成，等待应用"

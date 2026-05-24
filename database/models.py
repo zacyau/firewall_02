@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text, JSON
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -27,7 +27,7 @@ class Database:
 
 
 class FirewallDevice(Base):
-    """防火墙设备表 - 只保留直连网段和路由表"""
+    """防火墙设备表"""
     __tablename__ = 'firewall_devices'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -38,10 +38,6 @@ class FirewallDevice(Base):
     username = Column(String(50))
     password = Column(String(200))
     location = Column(String(200))
-    
-    connected_networks = Column(JSON)
-    routing_table = Column(JSON)
-    zone_mappings = Column(JSON)
     
     status = Column(String(20), default='offline')
     last_heartbeat = Column(DateTime, default=None)
@@ -58,9 +54,6 @@ class FirewallDevice(Base):
             "username": self.username,
             "password": self.password,
             "location": self.location,
-            "connected_networks": self.connected_networks or [],
-            "routing_table": self.routing_table or [],
-            "zone_mappings": self.zone_mappings or [],
             "status": self.status,
             "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,

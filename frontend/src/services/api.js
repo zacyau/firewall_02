@@ -78,4 +78,28 @@ export const portGroupAPI = {
   getStatus: (name) => api.get(`/groups/port/${name}/status`)
 }
 
+// 配置文件管理 API（支持前端直接编辑）
+export const configAPI = {
+  // 获取所有设备配置
+  getAll: () => api.get('/config/devices'),
+
+  // 获取单个设备配置
+  get: (name) => api.get(`/config/devices/${name}`),
+
+  // 更新设备配置
+  update: (name, data) => api.put(`/config/devices/${name}`, data),
+
+  // 新增设备配置
+  create: (data) => api.post('/config/devices', data),
+
+  // 删除设备配置
+  delete: (name) => api.delete(`/config/devices/${name}`),
+
+  // 备份配置文件
+  backup: () => api.post('/config/devices/backup'),
+
+  // 验证设备配置
+  validate: (data) => api.post('/config/devices/validate', data)
+}
+
 export default api

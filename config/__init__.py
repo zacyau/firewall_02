@@ -1,3 +1,3 @@
-from .devices import DEVICES
+from .devices import firewall_devices
 
-__all__ = ['DEVICES']
+__all__ = ['firewall_devices']

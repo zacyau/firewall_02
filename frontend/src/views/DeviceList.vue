@@ -3,18 +3,34 @@
     <div class="flex items-center justify-between">
       <div>
         <h1 class="page-title">设备管理</h1>
-        <p class="page-desc">管理所有注册的防火墙设备</p>
+        <p class="page-desc">防火墙设备由配置文件统一管理</p>
       </div>
-      <router-link to="/devices/register" class="btn-primary">注册新设备</router-link>
+      <div class="flex gap-2">
+        <router-link to="/devices/register" class="btn-primary">添加设备</router-link>
+      </div>
     </div>
 
     <div class="card">
+      <div class="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h4 class="text-sm font-medium text-amber-800">配置文件驱动模式</h4>
+            <p class="text-sm text-amber-700 mt-1">
+              设备信息存储在 <code class="px-1 py-0.5 bg-amber-100 rounded text-xs">config/devices.py</code> 配置文件中。所有修改会自动保存。
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div v-if="loading" class="py-12 text-center text-sm text-gray-400">加载中...</div>
       <div v-else-if="error" class="px-6 py-4 text-sm text-danger-500">{{ error }}</div>
       <div v-else-if="devices.length === 0" class="empty-state py-16">
         <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         <p class="text-sm text-gray-400 mb-3">暂无设备</p>
-        <router-link to="/devices/register" class="btn-primary btn-sm">注册设备</router-link>
+        <router-link to="/devices/register" class="btn-primary btn-sm">添加设备</router-link>
       </div>
 
       <div v-else class="table-container">
@@ -24,28 +40,26 @@
               <th>设备名称</th>
               <th>厂商</th>
               <th>IP地址</th>
-              <th>直连网段</th>
-              <th>路由数</th>
-              <th>状态</th>
+              <th>描述</th>
+              <th>区域类型</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="device in devices" :key="device.id">
+            <tr v-for="device in devices" :key="device.name">
               <td class="font-medium text-gray-900">{{ device.name }}</td>
               <td><span :class="vendorBadge(device.vendor)">{{ device.vendor.toUpperCase() }}</span></td>
               <td class="font-mono text-xs">{{ device.ip }}:{{ device.port }}</td>
-              <td><span class="badge-primary">{{ device.connected_networks?.length || 0 }}</span></td>
-              <td><span class="badge-warning">{{ device.routing_table?.length || 0 }}</span></td>
+              <td class="text-sm text-gray-500">{{ device.description || '-' }}</td>
               <td>
-                <span class="inline-flex items-center gap-1.5 text-sm">
-                  <span :class="['w-1.5 h-1.5 rounded-full', device.status === 'online' ? 'bg-success-500' : 'bg-gray-300']"></span>
-                  {{ device.status === 'online' ? '在线' : '离线' }}
-                </span>
+                <div class="flex flex-wrap gap-1">
+                  <span v-for="zoneType in getZoneTypes(device.zones)" :key="zoneType" class="badge-primary text-xs">{{ zoneType }}</span>
+                </div>
               </td>
               <td>
                 <div class="flex items-center gap-2">
-                  <button class="btn-default btn-sm" @click="editDevice(device)">编辑</button>
+                  <router-link :to="'/devices/register?name=' + device.name" class="btn-default btn-sm">编辑</router-link>
+                  <button class="btn-default btn-sm" @click="showConfig(device)" title="查看配置">配置</button>
                   <button class="btn-default btn-sm" @click="checkHeartbeat(device.name)" :disabled="checking === device.name">
                     {{ checking === device.name ? '检测中...' : '心跳' }}
                   </button>
@@ -84,69 +98,19 @@
         </div>
       </div>
 
-      <div v-if="showEditModal" class="modal-backdrop" @click.self="showEditModal = false">
+      <div v-if="showConfigModal" class="modal-backdrop" @click.self="showConfigModal = false">
         <div class="modal-panel-xl" @click.stop>
           <div class="modal-header">
-            <h3 class="text-base font-semibold text-gray-900">编辑设备</h3>
-            <button class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100" @click="showEditModal = false">
+            <h3 class="text-base font-semibold text-gray-900">设备配置详情 - {{ selectedDevice?.name }}</h3>
+            <button class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100" @click="showConfigModal = false">
               <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
           <div class="modal-body">
-            <form @submit.prevent="submitEdit" class="space-y-4">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="form-label">设备名称</label>
-                  <input v-model="editForm.name" type="text" class="form-input" disabled />
-                </div>
-                <div>
-                  <label class="form-label">厂商</label>
-                  <select v-model="editForm.vendor" class="form-select" required>
-                    <option value="">请选择厂商</option>
-                    <option value="huawei">华为</option>
-                    <option value="hillstone">山石</option>
-                    <option value="h3c">新华三</option>
-                    <option value="juniper">瞻博</option>
-                  </select>
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="form-label">IP地址 *</label>
-                  <input v-model="editForm.ip" type="text" class="form-input" placeholder="例如：192.168.1.10" required />
-                </div>
-                <div>
-                  <label class="form-label">端口</label>
-                  <input v-model="editForm.port" type="number" class="form-input" placeholder="默认：22" />
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="form-label">用户名</label>
-                  <input v-model="editForm.username" type="text" class="form-input" placeholder="SSH用户名" />
-                </div>
-                <div>
-                  <label class="form-label">密码</label>
-                  <input v-model="editForm.password" type="password" class="form-input" placeholder="SSH密码" />
-                </div>
-              </div>
-              <div>
-                <label class="form-label">位置</label>
-                <input v-model="editForm.location" type="text" class="form-input" placeholder="例如：数据中心A" />
-              </div>
-              <div>
-                <label class="form-label">直连网段 (YAML)</label>
-                <textarea v-model="connectedNetworksYaml" class="form-input font-mono" rows="4" placeholder="- network: 192.168.1.0/24&#10;  zone: trust&#10;  interface: GE0/0/1"></textarea>
-              </div>
-              <div>
-                <label class="form-label">路由表 (YAML)</label>
-                <textarea v-model="routingTableYaml" class="form-input font-mono" rows="4" placeholder="- destination: 172.25.0.0/16&#10;  next_hop: other_fw&#10;  zone: untrust"></textarea>
-              </div>
-              <div class="flex justify-end gap-3 pt-2">
-                <button type="button" class="btn-default" @click="showEditModal = false">取消</button>
-                <button type="submit" class="btn-primary" :disabled="editSubmitting">{{ editSubmitting ? '保存中...' : '保存修改' }}</button>
-              </div>
-            </form>
+            <pre class="bg-gray-900 text-gray-100 p-4 rounded-md text-xs overflow-x-auto">{{ deviceConfigYaml }}</pre>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-default" @click="showConfigModal = false">关闭</button>
           </div>
         </div>
       </div>
@@ -155,9 +119,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { deviceAPI } from '../services/api'
-import yaml from 'js-yaml'
+import { ref, onMounted, computed } from 'vue'
+import { deviceAPI, configAPI } from '../services/api'
 
 const devices = ref([])
 const loading = ref(false)
@@ -166,52 +129,53 @@ const checking = ref('')
 const deleting = ref('')
 const showHeartbeatModal = ref(false)
 const heartbeatResult = ref({})
-const showEditModal = ref(false)
-const editForm = ref({ name: '', vendor: '', ip: '', port: 22, username: '', password: '', location: '', connected_networks: [], routing_table: [] })
-const connectedNetworksYaml = ref('')
-const routingTableYaml = ref('')
-const editSubmitting = ref(false)
+const showConfigModal = ref(false)
+const selectedDevice = ref(null)
 
 const vendorBadge = (v) => ({ huawei: 'badge-primary', hillstone: 'badge-warning', h3c: 'badge-success', juniper: 'badge-danger' }[v] || 'badge-gray')
 
+const getZoneTypes = (zones) => {
+  if (!zones) return []
+  return Object.keys(zones)
+}
+
+const deviceConfigYaml = computed(() => {
+  if (!selectedDevice.value) return ''
+  return JSON.stringify(selectedDevice.value, null, 2)
+})
+
 const loadDevices = async () => {
   loading.value = true; error.value = ''
-  try { const r = await deviceAPI.getAll(); devices.value = r.data.devices || [] }
+  try { const r = await configAPI.getAll(); devices.value = r.data.devices || [] }
   catch (e) { error.value = '加载设备列表失败：' + (e.message || '未知错误') }
   finally { loading.value = false }
 }
 
 const checkHeartbeat = async (name) => {
   checking.value = name; heartbeatResult.value = { loading: true }; showHeartbeatModal.value = true
-  try { const r = await deviceAPI.checkHeartbeat(name); heartbeatResult.value = r.data; await loadDevices() }
+  try { const r = await deviceAPI.checkHeartbeat(name); heartbeatResult.value = r.data }
   catch (e) { heartbeatResult.value = { error: '心跳检测失败：' + (e.message || '未知错误') } }
   finally { checking.value = '' }
 }
 
 const confirmDelete = async (name) => {
-  if (!confirm(`确定要删除设备 "${name}" 吗？`)) return
+  if (!confirm(`确定要删除设备 "${name}" 吗？删除后将无法恢复。`)) return
   deleting.value = name
-  try { await deviceAPI.delete(name); await loadDevices() }
-  catch (e) { alert('删除失败：' + (e.message || '未知错误')) }
+  try {
+    const r = await configAPI.delete(name)
+    if (r.data.status === 'success') {
+      alert('设备已删除')
+      await loadDevices()
+    } else {
+      alert('删除失败：' + (r.data.detail || r.data.message))
+    }
+  } catch (e) { alert('删除失败：' + (e.response?.data?.detail || e.message)) }
   finally { deleting.value = '' }
 }
 
-const editDevice = (device) => {
-  editForm.value = { name: device.name, vendor: device.vendor, ip: device.ip, port: device.port || 22, username: device.username || '', password: device.password || '', location: device.location || '', connected_networks: device.connected_networks || [], routing_table: device.routing_table || [] }
-  connectedNetworksYaml.value = yaml.dump(device.connected_networks || [])
-  routingTableYaml.value = yaml.dump(device.routing_table || [])
-  showEditModal.value = true
-}
-
-const submitEdit = async () => {
-  editSubmitting.value = true
-  try {
-    try { editForm.value.connected_networks = yaml.load(connectedNetworksYaml.value || '[]') } catch { alert('直连网段 YAML 格式错误'); editSubmitting.value = false; return }
-    try { editForm.value.routing_table = yaml.load(routingTableYaml.value || '[]') } catch { alert('路由表 YAML 格式错误'); editSubmitting.value = false; return }
-    const r = await deviceAPI.register(editForm.value)
-    if (r.data.status === 'updated' || r.data.status === 'registered') { alert('设备更新成功！'); showEditModal.value = false; await loadDevices() }
-  } catch (e) { alert('更新失败：' + (e.response?.data?.detail || e.message)) }
-  finally { editSubmitting.value = false }
+const showConfig = (device) => {
+  selectedDevice.value = device
+  showConfigModal.value = true
 }
 
 onMounted(loadDevices)

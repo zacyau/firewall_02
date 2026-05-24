@@ -8,7 +8,7 @@
 - **智能路径计算**：基于网络拓扑自动计算防火墙路径，生成跨设备的策略配置
 - **CIDR 子网掩码支持**：路径计算引擎支持 CIDR 网段匹配（如 `10.0.0.0/8` 包含 `10.24.0.0/16`）
 - **多 Edge 子区域**：支持在同一防火墙下配置多个末端区域（如 Core_Server、PC 各自独立区域）
-- **配置文件驱动**：设备信息统一由配置文件管理，支持 Web 界面直接编辑
+- **数据库驱动**：设备信息以数据库为主存储，配置文件作为初始化种子，支持 Web 界面直接编辑
 - **策略模拟验证**：策略下发前自动进行冲突检测和冗余分析
 - **多厂商支持**：支持华为、山石、H3C、Juniper 等主流防火墙厂商
 - **地址组/端口组管理**：集中管理地址组和端口组，支持批量配置下发
@@ -63,12 +63,14 @@ npm run dev
 
 ### 数据存储架构
 
-项目采用**配置文件 + 数据库**双存储架构，职责分明：
+项目采用**数据库为主、配置文件为种子**的存储架构：
 
-| 存储方式 | 位置 | 存储内容 |
-|---------|------|---------|
-| **配置文件** | `config/devices.py` | 防火墙设备信息（名称、厂商、IP、区域拓扑） |
-| **SQLite 数据库** | `database/firewall_platform.db` | 地址组、端口组、安全策略、审计日志、组配置状态 |
+| 存储方式 | 位置 | 存储内容 | 说明 |
+|---------|------|---------|------|
+| **SQLite 数据库** | `database/firewall_platform.db` | 设备信息、地址组、端口组、安全策略、审计日志、组配置状态 | 主存储，运行时读写 |
+| **配置文件** | `config/devices.py` | 防火墙设备信息（名称、厂商、IP、区域拓扑） | 初始化种子，仅数据库为空时导入 |
+
+> 首次启动时，系统自动将 `config/devices.py` 中的设备信息导入数据库。后续所有设备管理操作均通过数据库进行。
 
 ### 技术栈
 
@@ -83,19 +85,18 @@ npm run dev
 
 ```
 firewall_02/
-├── main.py                     # 应用入口
+├── main.py                     # 应用入口（启动时自动迁移+种子导入）
 ├── api/                        # API 路由和请求模型
-│   ├── routes.py               # RESTful API 路由（30+ 接口）
+│   ├── routes.py               # RESTful API 路由
 │   └── models.py               # Pydantic 请求模型
 ├── services/                   # 业务逻辑层
 │   ├── path_engine.py          # 防火墙路径计算引擎（核心）
 │   ├── policy_manager.py       # 策略管理器
 │   ├── policy_validator.py     # 策略验证器（冲突检测、冗余分析）
 │   ├── group_manager.py        # 地址组/端口组管理器
-│   └── config_manager.py       # 配置文件读写管理器
+│   └── config_manager.py       # 设备配置管理器（数据库 CRUD + 种子导入）
 ├── config/                     # 配置文件
-│   ├── devices.py              # 防火墙设备配置（数据源）
-│   └── backups/                # 配置文件备份目录
+│   └── devices.py              # 防火墙设备配置（初始化种子）
 ├── database/                   # 数据访问层
 │   └── models.py               # SQLAlchemy 数据模型
 ├── adapters/                   # 防火墙适配器（适配器模式）
@@ -124,7 +125,7 @@ firewall_02/
 
 ## 设备配置文件格式
 
-设备信息统一维护在 `config/devices.py` 中，支持以下区域类型：
+配置文件 `config/devices.py` 作为初始化种子，支持以下区域类型：
 
 ```python
 firewall_devices = {
@@ -170,25 +171,17 @@ firewall_devices = {
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
-| POST | `/api/v1/devices/register` | 注册新设备 |
 | GET | `/api/v1/devices` | 获取所有设备 |
+| POST | `/api/v1/devices` | 新增设备 |
 | GET | `/api/v1/devices/{name}` | 获取单个设备 |
+| PUT | `/api/v1/devices/{name}` | 更新设备配置 |
 | DELETE | `/api/v1/devices/{name}` | 删除设备 |
 | GET | `/api/v1/devices/{name}/heartbeat` | 检查设备心跳 |
+| POST | `/api/v1/devices/validate` | 验证设备配置格式 |
+| GET | `/api/v1/devices/export` | 导出所有设备配置 |
+| POST | `/api/v1/devices/seed` | 重新导入配置种子 |
 
-### 二、配置文件管理
-
-| 方法 | 端点 | 功能 |
-|------|------|------|
-| GET | `/api/v1/config/devices` | 获取所有设备配置 |
-| GET | `/api/v1/config/devices/{name}` | 获取单个设备配置 |
-| POST | `/api/v1/config/devices` | 新增设备配置 |
-| PUT | `/api/v1/config/devices/{name}` | 更新设备配置 |
-| DELETE | `/api/v1/config/devices/{name}` | 删除设备配置 |
-| POST | `/api/v1/config/devices/backup` | 备份配置文件 |
-| POST | `/api/v1/config/devices/validate` | 验证设备配置格式 |
-
-#### 新增/更新设备配置请求体
+#### 新增/更新设备请求体
 
 ```json
 {
@@ -210,9 +203,9 @@ firewall_devices = {
 }
 ```
 
-### 三、策略管理
+### 二、策略管理
 
-#### 3.1 生成策略
+#### 2.1 生成策略
 - **端点**: `POST /api/v1/policies/generate`
 - **请求体**:
 ```json
@@ -224,23 +217,23 @@ firewall_devices = {
 }
 ```
 
-#### 3.2 模拟验证（dry_run）
+#### 2.2 模拟验证（dry_run）
 - **端点**: `POST /api/v1/policies/generate?dry_run=true`
 - 生成策略并进行冲突检测和冗余分析
 
-#### 3.3 应用策略
+#### 2.3 应用策略
 - **端点**: `POST /api/v1/policies/apply?simulate=true`
 - `simulate=true`（默认）：模拟模式，保存到数据库
 - `simulate=false`：真实模式，SSH 连接设备下发
 
-#### 3.4 策略验证
+#### 2.4 策略验证
 - **端点**: `POST /api/v1/policies/validate`
 - 独立的冲突检测和冗余分析
 
-#### 3.5 获取策略列表
+#### 2.5 获取策略列表
 - **端点**: `GET /api/v1/policies`
 
-### 四、地址组管理
+### 三、地址组管理
 
 | 方法 | 端点 | 功能 |
 |------|------|------|
@@ -254,7 +247,7 @@ firewall_devices = {
 | POST | `/api/v1/groups/address/{name}/apply-all` | 批量应用 |
 | GET | `/api/v1/groups/address/{name}/status` | 获取配置状态 |
 
-### 五、端口组管理
+### 四、端口组管理
 
 与地址组接口结构相同，端点路径为 `/api/v1/groups/port/...`
 
@@ -351,9 +344,13 @@ PathCalculator.calculate_path(src_ip, dst_ip)
 | port | INTEGER | SSH 端口（默认 22） |
 | username | VARCHAR(50) | 用户名 |
 | password | VARCHAR(200) | 密码 |
+| location | VARCHAR(200) | 位置 |
+| description | VARCHAR(500) | 描述 |
+| zones | JSON | 区域配置（edge/forward-in/forward-out/mixed） |
 | status | VARCHAR(20) | 状态（online/offline） |
-
-> 注意：区域配置（zones）已迁移到 `config/devices.py` 配置文件，不再存储在数据库中。
+| last_heartbeat | DATETIME | 最后心跳时间 |
+| created_at | DATETIME | 创建时间 |
+| updated_at | DATETIME | 更新时间 |
 
 ### security_policies（安全策略表）
 
@@ -402,7 +399,7 @@ import requests
 
 BASE_URL = "http://localhost:8080/api/v1"
 
-# 1. 添加设备（写入配置文件）
+# 1. 添加设备（写入数据库）
 device_data = {
     "name": "USG6660",
     "vendor": "huawei",
@@ -416,7 +413,7 @@ device_data = {
         }
     }
 }
-requests.post(f"{BASE_URL}/config/devices", json=device_data)
+requests.post(f"{BASE_URL}/devices", json=device_data)
 
 # 2. 创建地址组
 requests.post(f"{BASE_URL}/groups/address", json={
@@ -458,7 +455,7 @@ for fw in result["data"]["firewall_policies"]:
 | 页面 | 路径 | 功能 |
 |------|------|------|
 | 仪表盘 | `/` | 设备、策略统计信息 |
-| 设备列表 | `/devices` | 管理防火墙设备（配置文件驱动） |
+| 设备列表 | `/devices` | 管理防火墙设备 |
 | 添加/编辑设备 | `/devices/register` | 编辑设备配置和区域信息 |
 | 策略生成 | `/policies/generate` | 生成策略，查看防火墙路径 |
 | 策略列表 | `/policies` | 查看已保存的策略 |
@@ -469,11 +466,11 @@ for fw in result["data"]["firewall_policies"]:
 
 ## 注意事项
 
-1. **配置文件驱动**：设备信息存储在 `config/devices.py`，修改后自动备份到 `config/backups/`
+1. **数据库驱动**：设备信息以数据库为主存储，`config/devices.py` 仅作为初始化种子（数据库为空时自动导入）
 2. **模拟模式**：策略应用默认为模拟模式，生产环境请设置 `simulate=false`
 3. **策略验证**：建议正式下发前始终进行模拟验证，避免冲突
 4. **设备心跳**：依赖 SSH 连接，确保防火墙的 SSH 服务已开启
-5. **数据备份**：定期备份 SQLite 数据库文件和配置文件
+5. **数据备份**：定期备份 SQLite 数据库文件
 
 ## 测试
 

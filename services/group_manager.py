@@ -2,7 +2,7 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 from database import Database, AddressGroup, PortGroup, AddressGroupDeviceStatus, PortGroupDeviceStatus
 from factory.firewall_factory import FirewallFactory
-from config.devices import firewall_devices
+from services.config_manager import get_config_manager
 
 
 class GroupManager:
@@ -194,9 +194,10 @@ class GroupManager:
             session.close()
 
     def _get_all_devices(self) -> List[Dict[str, Any]]:
-        """获取所有防火墙设备（从配置文件）"""
+        """获取所有防火墙设备（从数据库）"""
+        devices = get_config_manager().get_devices()
         result = []
-        for name, config in firewall_devices.items():
+        for name, config in devices.items():
             result.append({
                 "name": config.get("name", name),
                 "vendor": config.get("vendor", "huawei"),

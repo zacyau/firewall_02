@@ -7,7 +7,7 @@ firewall_devices = {
     'USG6660': {
         'name': 'USG6660',
         'vendor': 'huawei',
-        'ip': '172.31.255.2',
+        'ip': '1.1.1.1',
         'port': 22,
         'username': '',
         'password': '',
@@ -29,7 +29,7 @@ firewall_devices = {
     'K6680': {
         'name': 'K6680',
         'vendor': 'hillstone',
-        'ip': '10.0.4.53',
+        'ip': '2.2.2.2',
         'port': 22,
         'username': '',
         'password': '',
@@ -75,7 +75,7 @@ firewall_devices = {
     'A3800': {
         'name': 'A3800',
         'vendor': 'hillstone',
-        'ip': '172.28.0.62',
+        'ip': '3.3.3.3',
         'port': 22,
         'username': '',
         'password': '',

@@ -94,8 +94,8 @@
         <div class="card-header"><h3 class="text-sm font-semibold text-gray-900">防火墙路径及Zone配置</h3></div>
         <div class="card-body">
           <div v-if="!generatedData.firewall_policies?.length" class="py-12 text-center text-sm text-gray-400">配置左侧表单后点击"生成策略"查看防火墙路径</div>
-          <div v-else>
-            <div class="mb-4 text-sm text-gray-600"><span class="font-medium">路径摘要：</span>{{ generatedData.path_summary }}</div>
+          <div v-else class="path-preview">
+            <div class="path-summary">路径摘要：{{ generatedData.path_summary }}</div>
 
             <div v-if="generatedData.path_group_details?.length > 1" class="space-y-6">
               <div v-for="(pg, pgIndex) in generatedData.path_group_details" :key="pgIndex">
@@ -103,42 +103,50 @@
                   <span class="badge-primary">路径 {{ pgIndex + 1 }}</span>
                   <span class="text-xs text-gray-500">{{ pg.path_description }}</span>
                 </div>
-                <div class="space-y-3">
-                  <div v-for="(fw, fwIndex) in pg.policies" :key="fwIndex" class="flex gap-3">
-                    <div class="flex flex-col items-center">
-                      <div class="w-7 h-7 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">{{ fwIndex + 1 }}</div>
-                      <div v-if="fwIndex < pg.policies.length - 1" class="w-px flex-1 bg-gray-200 my-1"></div>
+                <div class="path-timeline">
+                  <div v-for="(fw, fwIndex) in pg.policies" :key="fwIndex" class="timeline-item">
+                    <div class="timeline-marker">
+                      <div class="timeline-number">{{ fwIndex + 1 }}</div>
+                      <div v-if="fwIndex < pg.policies.length - 1" class="timeline-line"></div>
                     </div>
-                    <div class="flex-1 pb-4">
-                      <div class="flex items-center gap-2 mb-1">
-                        <span class="text-sm font-medium text-gray-900">{{ fw.device_name }}</span>
-                        <span :class="vendorBadge(fw.vendor)">{{ fw.vendor?.toUpperCase() }}</span>
+                    <div class="timeline-content">
+                      <div class="timeline-header">
+                        <span class="timeline-device">{{ fw.device_name }}</span>
+                        <span class="timeline-vendor" :class="'vendor-' + (fw.vendor || 'default')">{{ fw.vendor?.toUpperCase() }}</span>
                       </div>
-                      <div class="text-xs text-gray-500 space-y-0.5">
-                        <div>源Zone: <span class="font-medium text-gray-700">{{ fw.source_zone }}</span> → 目的Zone: <span class="font-medium text-gray-700">{{ fw.dest_zone }}</span></div>
-                        <div>方向: {{ fw.flow_direction }}</div>
+                      <div class="timeline-zone">
+                        <span class="tz-label">源Zone:</span>
+                        <span class="tz-name">{{ fw.source_zone }}</span>
+                        <span class="tz-arrow">→</span>
+                        <span class="tz-label">目的Zone:</span>
+                        <span class="tz-name">{{ fw.dest_zone }}</span>
                       </div>
+                      <div class="timeline-direction">方向: {{ fw.flow_direction }}</div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div v-else class="space-y-3">
-              <div v-for="(fw, index) in generatedData.firewall_policies" :key="index" class="flex gap-3">
-                <div class="flex flex-col items-center">
-                  <div class="w-7 h-7 rounded-full bg-primary-500 text-white flex items-center justify-center text-xs font-bold">{{ index + 1 }}</div>
-                  <div v-if="index < generatedData.firewall_policies.length - 1" class="w-px flex-1 bg-gray-200 my-1"></div>
+            <div v-else class="path-timeline">
+              <div v-for="(fw, index) in generatedData.firewall_policies" :key="index" class="timeline-item">
+                <div class="timeline-marker">
+                  <div class="timeline-number">{{ index + 1 }}</div>
+                  <div v-if="index < generatedData.firewall_policies.length - 1" class="timeline-line"></div>
                 </div>
-                <div class="flex-1 pb-4">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="text-sm font-medium text-gray-900">{{ fw.device_name }}</span>
-                    <span :class="vendorBadge(fw.vendor)">{{ fw.vendor?.toUpperCase() }}</span>
+                <div class="timeline-content">
+                  <div class="timeline-header">
+                    <span class="timeline-device">{{ fw.device_name }}</span>
+                    <span class="timeline-vendor" :class="'vendor-' + (fw.vendor || 'default')">{{ fw.vendor?.toUpperCase() }}</span>
                   </div>
-                  <div class="text-xs text-gray-500 space-y-0.5">
-                    <div>源Zone: <span class="font-medium text-gray-700">{{ fw.source_zone }}</span> → 目的Zone: <span class="font-medium text-gray-700">{{ fw.dest_zone }}</span></div>
-                    <div>方向: {{ fw.flow_direction }}</div>
+                  <div class="timeline-zone">
+                    <span class="tz-label">源Zone:</span>
+                    <span class="tz-name">{{ fw.source_zone }}</span>
+                    <span class="tz-arrow">→</span>
+                    <span class="tz-label">目的Zone:</span>
+                    <span class="tz-name">{{ fw.dest_zone }}</span>
                   </div>
+                  <div class="timeline-direction">方向: {{ fw.flow_direction }}</div>
                 </div>
               </div>
             </div>
@@ -490,3 +498,137 @@ onMounted(() => {
 })
 onBeforeUnmount(() => { document.removeEventListener('click', closeAllDropdowns) })
 </script>
+
+<style scoped>
+.path-preview {
+  padding: 0;
+}
+
+.path-summary {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.path-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+}
+
+.timeline-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 32px;
+}
+
+.timeline-number {
+  width: 32px;
+  height: 32px;
+  background: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.timeline-line {
+  width: 2px;
+  flex: 1;
+  min-height: 40px;
+  background: #e5e7eb;
+  margin: 4px 0;
+}
+
+.timeline-content {
+  flex: 1;
+  padding-bottom: 20px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.timeline-device {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.timeline-vendor {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.timeline-zone {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 2px;
+}
+
+.tz-label {
+  color: #6b7280;
+}
+
+.tz-name {
+  color: #374151;
+  font-weight: 500;
+}
+
+.tz-arrow {
+  color: #9ca3af;
+  margin: 0 4px;
+}
+
+.timeline-direction {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.vendor-huawei {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.vendor-hillstone {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.vendor-h3c {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.vendor-juniper {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.vendor-default {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+</style>

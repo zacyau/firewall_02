@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <div>
         <h1 class="page-title">设备管理</h1>
-        <p class="page-desc">防火墙设备由配置文件统一管理</p>
+        <p class="page-desc">防火墙设备由数据库统一管理</p>
       </div>
       <div class="flex gap-2">
         <router-link to="/devices/register" class="btn-primary">添加设备</router-link>
@@ -17,9 +17,9 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>
-            <h4 class="text-sm font-medium text-amber-800">配置文件驱动模式</h4>
+            <h4 class="text-sm font-medium text-amber-800">数据库驱动模式</h4>
             <p class="text-sm text-amber-700 mt-1">
-              设备信息存储在 <code class="px-1 py-0.5 bg-amber-100 rounded text-xs">config/devices.py</code> 配置文件中。所有修改会自动保存。
+              设备信息存储在数据库中，首次启动时从配置文件种子自动导入。所有修改实时生效。
             </p>
           </div>
         </div>

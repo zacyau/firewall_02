@@ -2,8 +2,8 @@ from typing import Dict, List, Any
 from datetime import datetime
 from database import Database, SecurityPolicy, PolicyAuditLog, AddressGroup, PortGroup
 from services.path_engine import PathCalculator
+from services.config_manager import get_config_manager
 from factory import FirewallFactory
-from config.devices import firewall_devices
 
 
 class PolicyManager:
@@ -11,9 +11,15 @@ class PolicyManager:
 
     def __init__(self, db: Database = None):
         self.db = db
-        self._devices = firewall_devices
-        self.path_calculator = PathCalculator(firewall_devices)
         self.factory = FirewallFactory()
+
+    def _get_devices(self) -> Dict[str, Any]:
+        """从数据库获取最新设备配置"""
+        return get_config_manager().get_devices()
+
+    def _get_path_calculator(self) -> PathCalculator:
+        """获取基于最新设备配置的路径计算器"""
+        return PathCalculator(self._get_devices())
 
     def _get_address_groups_from_db(self) -> Dict[str, List[str]]:
         """从数据库获取所有地址组"""
@@ -59,7 +65,7 @@ class PolicyManager:
         dest_port = policy_config["dest_port"]
         policy_name = policy_config["policy_name"]
 
-        full_config = self.path_calculator.get_policy_config(
+        full_config = self._get_path_calculator().get_policy_config(
             source_ip, dest_ip, protocol, dest_port, policy_name
         )
 
@@ -269,8 +275,8 @@ class PolicyManager:
             session.close()
 
     def _get_device_by_name(self, device_name: str) -> Any:
-        """根据名称获取设备（从配置文件）"""
-        return self._devices.get(device_name)
+        """根据名称获取设备（从数据库）"""
+        return get_config_manager().get_device(device_name)
 
     def _get_device_vendor(self, device_name: str) -> str:
         """获取设备厂商"""
@@ -329,16 +335,17 @@ class PolicyManager:
                 "message": "源地址组或目的地址组不能为空"
             }
 
-        source_ips = self.path_calculator.expand_ip_ranges(source_ips)
-        dest_ips = self.path_calculator.expand_ip_ranges(dest_ips)
+        pc = self._get_path_calculator()
+        source_ips = pc.expand_ip_ranges(source_ips)
+        dest_ips = pc.expand_ip_ranges(dest_ips)
 
         effective_protocol = port_group_protocol if port_group else protocol
 
         ip_pairs = [(src, dst) for src in source_ips for dst in dest_ips]
 
-        paths = self.path_calculator.calculate_paths_for_ip_pairs(ip_pairs)
+        paths = pc.calculate_paths_for_ip_pairs(ip_pairs)
 
-        merged_path_groups = self.path_calculator.merge_paths_by_consistency(
+        merged_path_groups = pc.merge_paths_by_consistency(
             paths, source_ips, dest_ips, ip_pairs
         )
 
@@ -406,18 +413,12 @@ class PolicyManager:
 
         path_group_results = []
         for path_group in merged_path_groups:
-            path_device_names = [fw["firewall"] for fw in path_group["path"]]
-            unique_path_devices = []
-            seen = set()
-            for dn in path_device_names:
-                if dn not in seen:
-                    unique_path_devices.append(dn)
-                    seen.add(dn)
-
             path_policies = []
-            for dn in unique_path_devices:
+            for path_fw in path_group["path"]:
                 for p in all_firewall_policies:
-                    if p["device_name"] == dn and p.get("source_zone") == path_group["path"][unique_path_devices.index(dn)].get("source_zone") and p.get("dest_zone") == path_group["path"][unique_path_devices.index(dn)].get("dest_zone"):
+                    if (p["device_name"] == path_fw["firewall"]
+                        and p.get("source_zone") == path_fw.get("src_zone")
+                        and p.get("dest_zone") == path_fw.get("dst_zone")):
                         path_policies.append(p)
                         break
 

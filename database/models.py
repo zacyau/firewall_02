@@ -38,6 +38,8 @@ class FirewallDevice(Base):
     username = Column(String(50))
     password = Column(String(200))
     location = Column(String(200))
+    description = Column(String(500))
+    zones = Column(JSON, default={})
     
     status = Column(String(20), default='offline')
     last_heartbeat = Column(DateTime, default=None)
@@ -54,6 +56,8 @@ class FirewallDevice(Base):
             "username": self.username,
             "password": self.password,
             "location": self.location,
+            "description": self.description or "",
+            "zones": self.zones or {},
             "status": self.status,
             "last_heartbeat": self.last_heartbeat.isoformat() if self.last_heartbeat else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,

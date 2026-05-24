@@ -1,7 +1,7 @@
 import ipaddress
 from typing import Dict, List, Any, Optional, Tuple
 from database import Database, SecurityPolicy
-from config.devices import firewall_devices
+from services.config_manager import get_config_manager
 
 
 class PolicyValidator:
@@ -485,8 +485,8 @@ class PolicyValidator:
         return f"{action} {protocol} {source_ip} -> {dest_ip} eq {dest_port}"
 
     def _get_device(self, device_name: str) -> Optional[Dict[str, Any]]:
-        """获取设备（从配置文件）"""
-        config = firewall_devices.get(device_name)
+        """获取设备（从数据库）"""
+        config = get_config_manager().get_device(device_name)
         if config:
             return {
                 "name": config.get("name", device_name),

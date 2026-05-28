@@ -3,6 +3,7 @@ from datetime import datetime
 from database import Database, AddressGroup, PortGroup, AddressGroupDeviceStatus, PortGroupDeviceStatus
 from factory.firewall_factory import FirewallFactory
 from services.config_manager import get_config_manager
+from core.logger import logger
 
 
 class GroupManager:
@@ -30,6 +31,7 @@ class GroupManager:
             return {"status": "success", "message": "地址组创建成功", "data": address_group.to_dict()}
         except Exception as e:
             session.rollback()
+            logger.error(f"创建地址组 {name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -69,6 +71,7 @@ class GroupManager:
             return {"status": "success", "message": "地址组更新成功", "data": group.to_dict()}
         except Exception as e:
             session.rollback()
+            logger.error(f"更新地址组 {name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -86,6 +89,7 @@ class GroupManager:
             return {"status": "success", "message": "地址组删除成功"}
         except Exception as e:
             session.rollback()
+            logger.error(f"删除地址组 {name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -109,6 +113,7 @@ class GroupManager:
             return {"status": "success", "message": "端口组创建成功", "data": port_group.to_dict()}
         except Exception as e:
             session.rollback()
+            logger.error(f"创建端口组 {name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -150,6 +155,7 @@ class GroupManager:
             return {"status": "success", "message": "端口组更新成功", "data": group.to_dict()}
         except Exception as e:
             session.rollback()
+            logger.error(f"更新端口组 {name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -167,6 +173,7 @@ class GroupManager:
             return {"status": "success", "message": "端口组删除成功"}
         except Exception as e:
             session.rollback()
+            logger.error(f"删除端口组 {name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -315,6 +322,7 @@ class GroupManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"生成地址组 {group_name} 配置失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -384,6 +392,7 @@ class GroupManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"生成端口组 {group_name} 配置失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -420,6 +429,7 @@ class GroupManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"应用地址组 {group_name} 到设备 {device_name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -456,6 +466,7 @@ class GroupManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"应用端口组 {group_name} 到设备 {device_name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -488,6 +499,7 @@ class GroupManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"批量应用地址组 {group_name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()
@@ -520,6 +532,7 @@ class GroupManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"批量应用端口组 {group_name} 失败: {e}", exc_info=True)
             return {"status": "error", "message": str(e)}
         finally:
             session.close()

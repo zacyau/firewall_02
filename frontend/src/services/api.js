@@ -90,4 +90,11 @@ export const portGroupAPI = {
   getStatus: (name) => api.get(`/groups/port/${name}/status`)
 }
 
+// 系统日志 API
+export const logAPI = {
+  getLogs: (params) => api.get('/logs', { params }),
+  clearLogs: () => api.delete('/logs'),
+  getInfo: () => api.get('/logs/info')
+}
+
 export default api

@@ -2,6 +2,7 @@ import ipaddress
 from typing import Dict, List, Any, Optional, Tuple
 from database import Database, SecurityPolicy
 from services.config_manager import get_config_manager
+from core.logger import logger
 
 
 class PolicyValidator:

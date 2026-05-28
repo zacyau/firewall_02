@@ -8,6 +8,7 @@ import AddressGroupList from '../views/AddressGroupList.vue'
 import AddressGroupCreate from '../views/AddressGroupCreate.vue'
 import PortGroupList from '../views/PortGroupList.vue'
 import PortGroupCreate from '../views/PortGroupCreate.vue'
+import LogViewer from '../views/LogViewer.vue'
 
 const routes = [
   {
@@ -54,6 +55,11 @@ const routes = [
     path: '/groups/port/create',
     name: 'PortGroupCreate',
     component: PortGroupCreate
+  },
+  {
+    path: '/logs',
+    name: 'LogViewer',
+    component: LogViewer
   }
 ]
 

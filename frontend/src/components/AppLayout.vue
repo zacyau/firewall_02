@@ -134,6 +134,15 @@ const IconGenerate = {
   },
 }
 
+const IconLog = {
+  render() {
+    return h('svg', { class: 'w-5 h-5', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2' }, [
+      h('path', { d: 'M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z' }),
+      h('path', { d: 'M14 2v6h6M16 13H8M16 17H8M10 9H8' }),
+    ])
+  },
+}
+
 const menuItems = [
   { path: '/', label: '控制台', icon: IconDashboard },
   { path: '/devices', label: '设备管理', icon: IconDevice },
@@ -141,6 +150,7 @@ const menuItems = [
   { path: '/groups/port', label: '端口组', icon: IconPort },
   { path: '/policies/generate', label: '策略生成', icon: IconGenerate },
   { path: '/policies', label: '策略列表', icon: IconPolicy },
+  { path: '/logs', label: '系统日志', icon: IconLog },
 ]
 
 const titleMap = {
@@ -153,6 +163,7 @@ const titleMap = {
   '/groups/port/create': '创建端口组',
   '/policies/generate': '策略生成',
   '/policies': '策略列表',
+  '/logs': '系统日志',
 }
 
 const currentTitle = computed(() => titleMap[route.path] || '防火墙运维平台')

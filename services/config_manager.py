@@ -3,6 +3,7 @@
 
 from typing import Dict, Any, Optional
 from database import Database, FirewallDevice
+from core.logger import logger
 
 
 class ConfigManager:
@@ -52,6 +53,7 @@ class ConfigManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"保存设备配置失败: {e}", exc_info=True)
             return {
                 'status': 'failed',
                 'message': f'保存失败: {str(e)}'
@@ -78,6 +80,7 @@ class ConfigManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"更新设备 {name} 失败: {e}", exc_info=True)
             return {
                 'status': 'failed',
                 'message': f'更新失败: {str(e)}'
@@ -105,6 +108,7 @@ class ConfigManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"添加设备 {name} 失败: {e}", exc_info=True)
             return {
                 'status': 'failed',
                 'message': f'添加失败: {str(e)}'
@@ -131,6 +135,7 @@ class ConfigManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"删除设备 {name} 失败: {e}", exc_info=True)
             return {
                 'status': 'failed',
                 'message': f'删除失败: {str(e)}'
@@ -161,6 +166,7 @@ class ConfigManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"种子导入失败: {e}", exc_info=True)
             return {
                 'status': 'failed',
                 'message': f'种子导入失败: {str(e)}'

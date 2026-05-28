@@ -457,6 +457,8 @@ class PathCalculator:
         if src_fw == dst_fw:
             # 同墙不同区域访问，合并为一条记录
             self.npf_list = [{'firewall': src_fw, 'src_zone': src_zone, 'dst_zone': dst_zone}]
+            # 过滤源区域与目标区域相同的防火墙
+            self.npf_list = [fw for fw in self.npf_list if fw['src_zone'] != fw['dst_zone']]
             return self.npf_list
         
         # Step 5: 跨墙访问，补全缺失的 Zone
@@ -480,6 +482,9 @@ class PathCalculator:
             result.extend(middle_firewalls)  # 中间防火墙
             result.append(self.npf_list[1])  # 目标防火墙
             self.npf_list = result
+        
+        # Step 7: 过滤源区域与目标区域相同的防火墙（无实际策略意义）
+        self.npf_list = [fw for fw in self.npf_list if fw['src_zone'] != fw['dst_zone']]
         
         return self.npf_list
 

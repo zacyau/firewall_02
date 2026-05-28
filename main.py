@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from api.router import device_router, policy_router, address_group_router, port_group_router, log_router
+from core.logger import logger
+from core.exception_handler import global_exception_handler, http_exception_handler, validation_exception_handler
 from database import Database
 from services.config_manager import get_config_manager
 
@@ -18,28 +22,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api/v1", tags=["防火墙管理"])
+app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+app.include_router(device_router, prefix="/api/v1", tags=["设备管理"])
+app.include_router(policy_router, prefix="/api/v1", tags=["策略管理"])
+app.include_router(address_group_router, prefix="/api/v1", tags=["地址组"])
+app.include_router(port_group_router, prefix="/api/v1", tags=["端口组"])
+app.include_router(log_router, prefix="/api/v1", tags=["系统日志"])
 
 
 @app.on_event("startup")
 async def startup_event():
-    """应用启动时初始化数据库"""
     db = Database()
     db.create_tables()
     _migrate_add_action_column(db)
     _migrate_add_zones_column(db)
-    print("数据库初始化完成")
+    logger.info("数据库初始化完成")
 
-    # 从配置文件种子导入（仅数据库为空时执行）
     cm = get_config_manager()
     result = cm.seed_from_config()
-    print(f"种子导入: {result['message']}")
+    logger.info(f"种子导入: {result['message']}")
 
-    print(f"已加载 {len(cm.get_devices())} 个设备配置")
+    logger.info(f"已加载 {len(cm.get_devices())} 个设备配置")
 
 
 def _migrate_add_action_column(db):
-    """迁移：为 security_policies 表添加 action 列"""
     try:
         from sqlalchemy import text
         session = db.get_session()
@@ -52,14 +61,13 @@ def _migrate_add_action_column(db):
                 text("ALTER TABLE security_policies ADD COLUMN action VARCHAR(20) DEFAULT 'permit'")
             )
             session.commit()
-            print("数据库迁移：已添加 security_policies.action 列")
+            logger.info("数据库迁移：已添加 security_policies.action 列")
         session.close()
     except Exception as e:
-        print(f"数据库迁移检查：{e}")
+        logger.error(f"数据库迁移检查失败: {e}", exc_info=True)
 
 
 def _migrate_add_zones_column(db):
-    """迁移：为 firewall_devices 表添加 zones 列"""
     try:
         from sqlalchemy import text
         session = db.get_session()
@@ -72,21 +80,20 @@ def _migrate_add_zones_column(db):
                 text("ALTER TABLE firewall_devices ADD COLUMN zones JSON DEFAULT '{}'")
             )
             session.commit()
-            print("数据库迁移：已添加 firewall_devices.zones 列")
+            logger.info("数据库迁移：已添加 firewall_devices.zones 列")
         if 'description' not in columns:
             session.execute(
                 text("ALTER TABLE firewall_devices ADD COLUMN description VARCHAR(500) DEFAULT ''")
             )
             session.commit()
-            print("数据库迁移：已添加 firewall_devices.description 列")
+            logger.info("数据库迁移：已添加 firewall_devices.description 列")
         session.close()
     except Exception as e:
-        print(f"数据库迁移检查：{e}")
+        logger.error(f"数据库迁移检查失败: {e}", exc_info=True)
 
 
 @app.get("/", summary="首页")
 async def root():
-    """平台首页"""
     cm = get_config_manager()
     return {
         "name": "防火墙自动化运维平台",
@@ -108,7 +115,6 @@ async def root():
 
 @app.get("/health", summary="健康检查")
 async def health_check():
-    """健康检查接口"""
     cm = get_config_manager()
     return {
         "status": "healthy",

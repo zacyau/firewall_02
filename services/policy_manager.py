@@ -4,6 +4,7 @@ from database import Database, SecurityPolicy, PolicyAuditLog, AddressGroup, Por
 from services.path_engine import PathCalculator
 from services.config_manager import get_config_manager
 from factory import FirewallFactory
+from core.logger import logger
 
 
 class PolicyManager:
@@ -125,6 +126,7 @@ class PolicyManager:
             }
         except Exception as e:
             session.rollback()
+            logger.error(f"保存策略失败: {e}", exc_info=True)
             return {
                 "status": "failed",
                 "message": str(e)
@@ -239,7 +241,7 @@ class PolicyManager:
             
         except Exception as e:
             session.rollback()
-            # 如果策略已创建，标记为失败
+            logger.error(f"应用策略失败: {e}", exc_info=True)
             if 'policy' in locals() and policy.id:
                 policy.status = "failed"
                 policy.error_message = str(e)
